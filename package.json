@@ -1,0 +1,8 @@
+{
+  "name": "rc-arcade-sim",
+  "version": "0.1.0",
+  "description": "Simulasi cloud RC arcade: HP -> relay server -> mobil (virtual). Karya orisinal.",
+  "type": "module",
+  "scripts": { "start": "node server.js" },
+  "dependencies": { "ws": "^8.18.0" }
+}

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>RC Mobil (Simulasi)</title>
+<style>
+  body { margin:0; background:#0f1115; color:#e8eaed; font-family:system-ui,sans-serif; }
+  header { padding:10px 14px; background:#1a1d24; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  .dot { width:9px; height:9px; border-radius:50%; background:#555; display:inline-block; margin-right:5px; }
+  .dot.on { background:#2e9; }
+  canvas { display:block; margin:12px auto; background:#161922; border:1px solid #2a2e37; border-radius:8px; max-width:98vw; }
+  b { color:#fff; }
+</style>
+</head>
+<body>
+  <header>
+    <b>🚗 Mobil (simulasi)</b>
+    <span><span class="dot" id="d"></span><span id="st">menyambung…</span></span>
+    <span>Laju: <b id="spd">0.0</b></span>
+    <span>Gas: <b id="thr">0.00</b></span>
+    <span>Belok: <b id="str">0.00</b></span>
+  </header>
+  <canvas id="c" width="900" height="560"></canvas>
+
+<script>
+const ROOM = new URLSearchParams(location.search).get('room') || 'demo1';
+
+// ---- state mobil (model sepeda sederhana) ----
+const car = { x:450, y:280, heading:0, speed:0 };
+let throttle = 0, steer = 0, lastCmd = 0;
+
+// ---- koneksi ke relay ----
+let ws;
+function connect(){
+  ws = new WebSocket(`ws://${location.host}`);
+  ws.onopen = () => ws.send(JSON.stringify({ type:'hello', role:'car', room:ROOM }));
+  ws.onclose = () => { setDot(false,'putus — menyambung ulang…'); setTimeout(connect,1000); };
+  ws.onmessage = (e) => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'presence') setDot(m.controller, m.controller ? 'kontroler tersambung' : 'menunggu kontroler…');
+    if (m.type === 'control') { throttle = m.throttle||0; steer = m.steer||0; lastCmd = Date.now(); }
+  };
+}
+const d=document.getElementById('d'), st=document.getElementById('st');
+const spdEl=document.getElementById('spd'), thrEl=document.getElementById('thr'), strEl=document.getElementById('str');
+function setDot(on,t){ d.classList.toggle('on',on); st.textContent=t; }
+connect();
+
+// kirim telemetry balik ke kontroler 20x/detik
+setInterval(() => {
+  if (ws && ws.readyState === 1)
+    ws.send(JSON.stringify({ type:'telemetry', x:car.x|0, y:car.y|0, heading:+car.heading.toFixed(2), speed:+car.speed.toFixed(2) }));
+}, 50);
+
+// ---- fisika + render ----
+const c = document.getElementById('c'), ctx = c.getContext('2d');
+const ACCEL=260, FRICTION=1.6, MAXSPEED=240, TURN=2.4;
+let prev = performance.now();
+
+function step(now){
+  const dt = Math.min(0.05, (now - prev)/1000); prev = now;
+
+  // failsafe: kalau > 0.4 dtk tak ada perintah, berhenti (mirip RC beneran)
+  if (Date.now() - lastCmd > 400) { throttle = 0; steer = 0; }
+
+  car.speed += throttle * ACCEL * dt;
+  const drag = FRICTION * dt;
+  car.speed -= car.speed * drag;
+  car.speed = Math.max(-MAXSPEED*0.5, Math.min(MAXSPEED, car.speed));
+  car.heading += steer * TURN * dt * (car.speed/MAXSPEED);
+
+  car.x += Math.cos(car.heading) * car.speed * dt;
+  car.y += Math.sin(car.heading) * car.speed * dt;
+  // wrap-around: tembus tepi, muncul di sisi seberang (arena tanpa batas)
+  if (car.x < 0) car.x += c.width;  else if (car.x > c.width)  car.x -= c.width;
+  if (car.y < 0) car.y += c.height; else if (car.y > c.height) car.y -= c.height;
+
+  draw();
+  spdEl.textContent = Math.abs(car.speed).toFixed(1);
+  thrEl.textContent = throttle.toFixed(2);
+  strEl.textContent = steer.toFixed(2);
+  requestAnimationFrame(step);
+}
+requestAnimationFrame(step);
+
+function draw(){
+  ctx.clearRect(0,0,c.width,c.height);
+  // grid lintasan
+  ctx.strokeStyle='#222634'; ctx.lineWidth=1;
+  for(let x=0;x<c.width;x+=40){ ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,c.height); ctx.stroke(); }
+  for(let y=0;y<c.height;y+=40){ ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(c.width,y); ctx.stroke(); }
+  // mobil (bentuk sederhana orisinal)
+  ctx.save();
+  ctx.translate(car.x, car.y); ctx.rotate(car.heading);
+  ctx.fillStyle='#36c'; ctx.strokeStyle='#8ab4ff'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.roundRect(-22,-12,44,24,5); ctx.fill(); ctx.stroke();
+  ctx.fillStyle='#cfe0ff'; ctx.fillRect(6,-8,8,16);         // "kaca depan"
+  ctx.fillStyle='#111'; ctx.fillRect(-16,-15,10,5); ctx.fillRect(-16,10,10,5); // ban
+  ctx.fillRect(6,-15,10,5); ctx.fillRect(6,10,10,5);
+  ctx.restore();
+}
+</script>
+</body>
+</html>
