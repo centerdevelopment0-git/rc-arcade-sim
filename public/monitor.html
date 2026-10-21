@@ -97,7 +97,7 @@ const ledSpec = {};                        // carId -> {pattern, color} untuk an
 
 // ---------- koneksi monitor ----------
 function connect(){
-  const ws = new WebSocket(`ws://${location.host}`);
+  const ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);
   ws.onopen = () => ws.send(JSON.stringify({ type:'hello', role:'monitor' }));
   ws.onclose = () => setTimeout(connect, 1000);
   ws.onmessage = (e) => { const s = JSON.parse(e.data); if (s.type==='stats') render(s); };

@@ -33,7 +33,7 @@ let throttle = 0, steer = 0, lastCmd = 0;
 // ---- koneksi ke relay ----
 let ws;
 function connect(){
-  ws = new WebSocket(`ws://${location.host}`);
+  ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);
   ws.onopen = () => ws.send(JSON.stringify({ type:'hello', role:'car', room:ROOM }));
   ws.onclose = () => { setDot(false,'putus — menyambung ulang…'); setTimeout(connect,1000); };
   ws.onmessage = (e) => {

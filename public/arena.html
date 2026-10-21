@@ -45,7 +45,7 @@ for (let i = 1; i <= N; i++) {
 }
 
 function connect(car){
-  const ws = new WebSocket(`ws://${location.host}`);
+  const ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);
   car.ws = ws;
   ws.onopen = () => { car.online = true; car.connectedAt = Date.now(); ws.send(JSON.stringify({ type:'hello', role:'car', car:car.id })); };
   ws.onclose = () => { car.online = false; car.controllers = 0; setTimeout(()=>connect(car), 1000); };

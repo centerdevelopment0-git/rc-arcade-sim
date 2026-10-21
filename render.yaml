@@ -1,0 +1,10 @@
+# Blueprint deploy Render — https://render.com
+# Hubungkan repo ini di Render, dia baca file ini otomatis.
+services:
+  - type: web
+    name: rc-arcade-sim
+    runtime: node
+    plan: free
+    buildCommand: npm install
+    startCommand: node server.js
+    autoDeploy: true   # tiap git push -> otomatis deploy ulang

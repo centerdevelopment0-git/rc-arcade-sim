@@ -82,7 +82,7 @@ function selectCar(car){
 // ---------- koneksi ----------
 let ws;
 function connect(){
-  ws=new WebSocket(`ws://${location.host}`);
+  ws=new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);
   ws.onopen=()=>ws.send(JSON.stringify({type:'hello',role:'controller',car:CAR,name:'Keyboard'}));
   ws.onclose=()=>{ setDot(false,'putus — menyambung ulang…'); setTimeout(connect,1000); };
   ws.onmessage=(e)=>{
