@@ -1,5 +1,5 @@
-// test/smoke.test.js — uji asap end-to-end: jalankan server asli, sambungkan
-// mobil + kontroler lewat WebSocket, cek alur HP -> server -> mobil.
+// test/smoke.test.js — uji asap end-to-end: jalankan server asli, sambungkan HP (driver),
+// layar laptop (spectator), dashboard (monitor), dan mobil fisik (device) lewat WebSocket /race.
 // Jalankan: npm test
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,15 +20,10 @@ before(async () => {
 });
 after(() => proc.kill());
 
-// sambung + kirim hello, kumpulkan semua pesan masuk
-function client(hello) {
-  return new Promise((resolve, reject) => {
-    const ws = new WebSocket(WS), msgs = [];
-    ws.on('message', d => msgs.push(JSON.parse(d)));
-    ws.on('open', () => { ws.send(JSON.stringify({ type:'hello', ...hello })); resolve({ ws, msgs }); });
-    ws.on('error', reject);
-  });
-}
+// buka koneksi ke /race, kumpulkan semua pesan masuk
+const open = () => new Promise((res, rej) => { const ws = new WebSocket(WS + '/race'), msgs = [];
+  ws.on('message', d => msgs.push(JSON.parse(d))); ws.on('open', () => res({ ws, msgs })); ws.on('error', rej); });
+const send = (c, m) => c.ws.send(JSON.stringify(m));
 async function waitFor(msgs, pred, ms = 2000) {
   const t0 = Date.now();
   while (Date.now() - t0 < ms) {
@@ -38,57 +33,23 @@ async function waitFor(msgs, pred, ms = 2000) {
   throw new Error('pesan tidak datang');
 }
 
-test('halaman & health check tersaji', async () => {
-  for (const p of ['/', '/arena.html', '/controller.html', '/keyboard.html', '/monitor.html', '/car.html', '/rc-state.js'])
+test('halaman & health check tersaji, halaman arena lama sudah tidak ada', async () => {
+  for (const p of ['/', '/race3d.html', '/monitor.html', '/vendor/qrcode.js', '/shared/physics.js', '/vendor/three/three.module.min.js'])
     assert.equal((await fetch(HTTP + p)).status, 200, p);
+  for (const p of ['/arena.html', '/controller.html', '/keyboard.html', '/car.html', '/rc-state.js'])
+    assert.equal((await fetch(HTTP + p)).status, 404, p);
   const h = await (await fetch(HTTP + '/healthz')).json();
   assert.equal(h.ok, true);
   assert.equal((await fetch(HTTP + '/../server.js')).status, 404);
 });
 
-test('kontrol diteruskan ke mobil (dengan clamp) dan telemetry balik', async () => {
-  const car = await client({ role:'car', car:'car7' });
-  const hp  = await client({ role:'controller', car:'car7', name:'Tes' });
-  await waitFor(hp.msgs, m => m.type === 'presence' && m.carOnline);
-
-  hp.ws.send(JSON.stringify({ type:'control', throttle:5, steer:'x', t:Date.now() }));
-  const ctrl = await waitFor(car.msgs, m => m.type === 'control');
-  assert.equal(ctrl.throttle, 1);   // di-clamp ke 1
-  assert.equal(ctrl.steer, 0);      // bukan angka -> 0
-
-  car.ws.send(JSON.stringify({ type:'telemetry', x:1, y:2, heading:0, speed:3 }));
-  const tel = await waitFor(hp.msgs, m => m.type === 'telemetry');
-  assert.equal(tel.speed, 3);
-
-  await waitFor(hp.msgs, m => m.type === 'skills' && Array.isArray(m.skills));
-  car.ws.close(); hp.ws.close();
-});
-
-test('kontroler kedua ditolak, mobil bebas lagi setelah yang pertama keluar', async () => {
-  const a = await client({ role:'controller', car:'car8', name:'A' });
-  await waitFor(a.msgs, m => m.type === 'presence');
-  const b = await client({ role:'controller', car:'car8', name:'B' });
-  const denied = await waitFor(b.msgs, m => m.type === 'denied');
-  assert.equal(denied.driver, 'A');
-  a.ws.close(); b.ws.close();
-  await new Promise(r => setTimeout(r, 150));
-  const c = await client({ role:'controller', car:'car8', name:'C' });
-  const p = await waitFor(c.msgs, m => m.type === 'presence');
-  assert.equal(p.driver, 'C');
-  c.ws.close();
-});
-
-test('monitor menerima statistik', async () => {
-  const mon = await client({ role:'monitor' });
-  const s = await waitFor(mon.msgs, m => m.type === 'stats');
-  assert.ok(s.clients.monitors >= 1);
-  mon.ws.close();
+test('WebSocket selain /race ditolak (relay lama dihapus)', async () => {
+  const ws = new WebSocket(WS + '/');
+  await new Promise(res => { ws.on('error', res); ws.on('close', res); });
+  assert.notEqual(ws.readyState, WebSocket.OPEN);
 });
 
 test('balapan 3D: penonton mulai, pengemudi bergerak, kursi kedua ditolak', async () => {
-  const open = () => new Promise((res, rej) => { const ws = new WebSocket(WS + '/race'), msgs = [];
-    ws.on('message', d => msgs.push(JSON.parse(d))); ws.on('open', () => res({ ws, msgs })); ws.on('error', rej); });
-  const send = (c, m) => c.ws.send(JSON.stringify(m));
   const tv = await open(), hp = await open(), hp2 = await open();
   const welcome = await waitFor(tv.msgs, m => m.type === 'welcome');
   assert.equal(welcome.arena.gates.length, 4);
@@ -109,9 +70,6 @@ test('balapan 3D: penonton mulai, pengemudi bergerak, kursi kedua ditolak', asyn
 });
 
 test('balapan 3D: mobil fisik (device) dapat perintah ber-cap dan gerbang dari QR dihitung', async () => {
-  const open = () => new Promise((res, rej) => { const ws = new WebSocket(WS + '/race'), msgs = [];
-    ws.on('message', d => msgs.push(JSON.parse(d))); ws.on('open', () => res({ ws, msgs })); ws.on('error', rej); });
-  const send = (c, m) => c.ws.send(JSON.stringify(m));
   const dev = await open(), hp = await open(), tv = await open();
   send(dev, { type:'join', role:'device', car:'car3' });
   send(hp, { type:'join', role:'driver', car:'car3', name:'Fisik' });
@@ -137,9 +95,6 @@ test('balapan 3D: mobil fisik (device) dapat perintah ber-cap dan gerbang dari Q
 });
 
 test('balapan 3D: chat, klakson, dan statistik traffic', async () => {
-  const open = () => new Promise((res, rej) => { const ws = new WebSocket(WS + '/race'), msgs = [];
-    ws.on('message', d => msgs.push(JSON.parse(d))); ws.on('open', () => res({ ws, msgs })); ws.on('error', rej); });
-  const send = (c, m) => c.ws.send(JSON.stringify(m));
   const hp = await open(), tv = await open();
   send(tv, { type:'join', role:'spectator' });
   send(hp, { type:'join', role:'driver', car:'car2', name:'Chatter' });
@@ -157,4 +112,40 @@ test('balapan 3D: chat, klakson, dan statistik traffic', async () => {
   const late = await open();
   assert.ok((await waitFor(late.msgs, m => m.type === 'welcome')).chat.some(m => m.from === 'Chatter'));
   hp.ws.close(); tv.ws.close(); late.ws.close();
+});
+
+test('dashboard: input HP diterapkan ke mobil sim 3D (output), berhenti saat input basi', async () => {
+  const mon = await open(), hp = await open(), tv = await open();
+  send(tv, { type:'join', role:'spectator' });
+  send(tv, { type:'admin', action:'reset' });          // latihan bebas: mobil langsung bisa jalan
+  send(mon, { type:'join', role:'monitor' });
+  send(hp, { type:'join', role:'driver', car:'car2', name:'IO' });
+  await waitFor(hp.msgs, m => m.type === 'joined');
+  const car2 = s => s.vehicles.find(v => v.id === 'car2');
+  const timer = setInterval(() => send(hp, { type:'input', throttle:1, steer:0.5, t:Date.now() }), 50);
+  try {
+    const s = await waitFor(mon.msgs, m => m.type === 'snapshot' && car2(m).io.outPerSec > 0, 3000);
+    const v = car2(s);
+    assert.ok(v.io.inPerSec > 0, 'input masuk tercatat');
+    assert.ok(v.io.msSinceOutput < 300, 'output baru saja diterapkan');
+    assert.deepEqual(v.input, { throttle:1, steer:0.5 });
+    assert.ok(s.net.clients.some(c => c.role === 'monitor'));
+  } finally { clearInterval(timer); }
+  await waitFor(mon.msgs, m => m.type === 'snapshot' && car2(m).io.msSinceInput > 1100 && car2(m).io.msSinceOutput > 1000, 4000);
+  mon.ws.close(); hp.ws.close(); tv.ws.close();
+});
+
+test('ganti RC: join ulang pindah mobil, leave melepas mobil', async () => {
+  const hp = await open(), tv = await open();
+  send(tv, { type:'join', role:'spectator' });
+  send(hp, { type:'join', role:'driver', car:'car1', name:'Pindah' });
+  await waitFor(hp.msgs, m => m.type === 'joined' && m.car === 'car1');
+  send(hp, { type:'join', role:'driver', car:'car3', name:'Pindah' });
+  await waitFor(hp.msgs, m => m.type === 'joined' && m.car === 'car3');
+  const drv = (s, id) => s.vehicles.find(v => v.id === id).driver;
+  await waitFor(tv.msgs, m => m.type === 'snapshot' && drv(m, 'car1') === null && drv(m, 'car3') === 'Pindah');
+  send(hp, { type:'leave' });
+  tv.msgs.length = 0;
+  await waitFor(tv.msgs, m => m.type === 'snapshot' && drv(m, 'car3') === null);
+  hp.ws.close(); tv.ws.close();
 });

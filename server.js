@@ -1,69 +1,45 @@
-// server.js — Relay "cloud" multi-mobil untuk RC Arcade Sim (karya orisinal).
+// server.js — Server RC Arcade Sim: menyajikan halaman + room balapan 3D (WebSocket /race).
 //
-// Peran: ini "internet"-nya. Mengatur BANYAK mobil (RC1, RC2, ...) dan banyak
-// kontroler (HP) sekaligus, meneruskan perintah ke mobil yang tepat, telemetry
-// balik ke kontroler yang tepat, dan menyiarkan STATISTIK ke layar monitor.
-//
-// Tiga peran klien:
-//   - 'controller' : HP pemain. Terikat ke satu mobil (field `car`).
-//   - 'car'        : satu mobil (sim atau RC fisik). Punya id (`car`).
-//   - 'monitor'    : dashboard. Menerima statistik seluruh sistem.
+// Halaman:
+//   /                 halaman depan (link + QR)
+//   /race3d.html      layar laptop (arena, papan skor, kisi POV) — ?drive = mode setir di HP
+//   /monitor.html     dashboard koneksi: input & output per mobil, RTT, beban
+// Logika balapan ada di race-server.js + shared/.
 
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
-import { WebSocketServer } from 'ws';
 import { createRaceServer } from './race-server.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
-// folder statis tambahan: prefix URL -> folder (logika sim bersama & Three.js untuk balapan 3D)
+// prefix URL -> folder (logika sim bersama & Three.js disajikan dari server sendiri, tanpa CDN)
 const STATIC_DIRS = [
   ['/shared/', path.join(__dirname, 'shared')],
   ['/vendor/three/', path.join(__dirname, 'node_modules', 'three', 'build')],
   ['/', PUBLIC],
 ];
+const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css', '.png':'image/png', '.svg':'image/svg+xml' };
+const startedAt = Date.now();
 
-// ---------- Skill (SCALABLE) ----------
-// Tambah skill baru cukup tulis satu baris di SKILLS. Semua UI & logika ikut otomatis.
-//   duration  : berapa lama aktif (ms)
-//   cooldown  : jeda sebelum bisa dipakai lagi (ms)
-//   speedMul  : pengali kecepatan maks selama aktif (base tanpa skill = BASE_SPEED_FACTOR)
-const BASE_SPEED_FACTOR = 0.7;   // default 70% dari kecepatan maksimal
-const SKILLS = [
-  { id:'turbo', name:'Turbo', icon:'⚡', duration:3000, cooldown:6000, speedMul:1.0, desc:'Kecepatan maksimal 3 dtk' },
-  // Contoh skill lain — hapus // untuk mengaktifkan, bebas tambah sebanyak mungkin:
-  // { id:'nitro', name:'Nitro', icon:'🔥', duration:1500, cooldown:9000, speedMul:1.4, desc:'Dorongan ekstra 1,5 dtk' },
-  // { id:'rem',   name:'Rem',   icon:'🛑', duration:800,  cooldown:3000, speedMul:0.2, desc:'Pelan sejenak' },
-];
-const SKILL_BY_ID = Object.fromEntries(SKILLS.map(s => [s.id, s]));
-
-// hitung status tiap skill sebuah mobil + pengali kecepatan efektif
-function skillsSnapshot(c, now){
-  let speedMul = BASE_SPEED_FACTOR;
-  const list = SKILLS.map(sk => {
-    const a = c.skills[sk.id] || 0, dt = a ? now - a : Infinity;
-    let state = 'standby', remain = 0;
-    if (a) {
-      if (dt < sk.duration) { state = 'active'; remain = sk.duration - dt; speedMul = Math.max(speedMul, sk.speedMul); }
-      else if (dt < sk.duration + sk.cooldown) { state = 'cooldown'; remain = sk.duration + sk.cooldown - dt; }
-    }
-    return { id:sk.id, name:sk.name, icon:sk.icon, state, remain:Math.max(0, Math.round(remain)) };
-  });
-  return { list, speedMul };
+function lanIPs() {
+  const r = [];
+  for (const list of Object.values(os.networkInterfaces()))
+    for (const i of list || []) if (i.family === 'IPv4' && !i.internal) r.push(i.address);
+  return r;
 }
 
-// ---------- 1) Server file statis ----------
-const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css' };
+const race = createRaceServer();
+
 const server = http.createServer((req, res) => {
   let url = req.url.split('?')[0];
-  // health check (dipakai Render & tes otomatis)
+  // health check (dipakai Render & tes otomatis); `lan` dipakai QR saat dibuka via localhost
   if (url === '/healthz') {
     res.writeHead(200, { 'Content-Type':'application/json' });
-    res.end(JSON.stringify({ ok:true, uptime:Math.floor((Date.now()-startedAt)/1000), clients:clients.size,
+    res.end(JSON.stringify({ ok:true, uptime:Math.floor((Date.now() - startedAt) / 1000), clients:race.wss.clients.size,
                              lan:lanIPs().map(ip => `http://${ip}:${PORT}`) }));
     return;
   }
@@ -79,175 +55,24 @@ const server = http.createServer((req, res) => {
   });
 });
 
-// ---------- 2) Registry & statistik ----------
-const wss = new WebSocketServer({ noServer: true });
-const raceServer = createRaceServer();   // balapan 3D di ws://host/race
 server.on('upgrade', (req, socket, head) => {
-  const target = req.url.split('?')[0] === '/race' ? raceServer.wss : wss;
-  target.handleUpgrade(req, socket, head, ws => target.emit('connection', ws, req));
-});
-const clients = new Map();   // ws -> { role, car }
-const cars = new Map();      // carId -> { carWs, controllers:Set<ws>, ctrl, tel, lastCtrl, lastTel, cps, tps }
-const monitors = new Set();
-let gIn = 0, gOut = 0, gInPerSec = 0, gOutPerSec = 0;
-const startedAt = Date.now();
-
-function getCar(id) {
-  if (!cars.has(id))
-    cars.set(id, { carWs:null, controllers:new Set(), driver:null, lastThr:0, lastStr:0,
-                   onlineSince:0, skills:{}, ctrl:0, tel:0, lastCtrl:0, lastTel:0, cps:0, tps:0 });
-  return cars.get(id);
-}
-// input kontrol harus angka -1..1 (sisanya dianggap 0) — lihat docs/07-TEST-PLAN "Clamp input"
-function clamp1(v) { v = Number(v); return Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0; }
-function out(ws, obj) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(obj)); gOut++; } }
-
-function presence(carId) {
-  const c = cars.get(carId); if (!c) return;
-  const msg = { type:'presence', car:carId, carOnline:!!c.carWs,
-                controllers:c.controllers.size, driver:c.driver };
-  out(c.carWs, msg);
-  for (const w of c.controllers) out(w, msg);
-}
-
-wss.on('connection', (ws) => {
-  clients.set(ws, { role:null, car:null });
-  ws.isAlive = true;
-  ws.on('pong', () => { ws.isAlive = true; });
-
-  ws.on('message', (raw) => {
-    gIn++;
-    let m; try { m = JSON.parse(raw); } catch { return; }
-    const info = clients.get(ws);
-
-    if (m.type === 'hello') {
-      info.role = ['controller','car','monitor'].includes(m.role) ? m.role : 'controller';
-      info.car  = String(m.car || 'car1');
-      info.name = String(m.name || 'Pemain').slice(0, 24);
-      if (info.role === 'monitor') { monitors.add(ws); return; }
-      const c = getCar(info.car);
-      if (info.role === 'car') { c.carWs = ws; c.onlineSince = Date.now(); }
-      else {
-        // aturan: 1 kontroler aktif per mobil
-        if (c.controllers.size >= 1) {
-          info.role = null;   // ditolak: tidak dihitung sebagai kontroler
-          out(ws, { type:'denied', car:info.car, driver:c.driver });
-          console.log(`[x] ${info.name} ditolak di ${info.car} (dipakai ${c.driver})`);
-          return;
-        }
-        c.controllers.add(ws); c.driver = info.name;
-      }
-      console.log(`[+] ${info.role} ${info.name||''} -> ${info.car}`);
-      presence(info.car);
-      return;
-    }
-
-    // perintah kontrol: controller -> mobil terikat
-    if (m.type === 'control' && info.role === 'controller') {
-      const c = cars.get(info.car); if (!c || !c.controllers.has(ws)) return; // hanya kontroler aktif
-      c.ctrl++; c.lastCtrl = Date.now();
-      c.lastThr = clamp1(m.throttle); c.lastStr = clamp1(m.steer);     // rekam isi input terakhir
-      out(c.carWs, { type:'control', car:info.car, throttle:c.lastThr, steer:c.lastStr, t:m.t });
-    }
-    // telemetry: mobil -> semua kontroler mobil itu
-    else if (m.type === 'telemetry' && info.role === 'car') {
-      const c = cars.get(info.car); if (!c) return;
-      c.tel++; c.lastTel = Date.now();
-      for (const w of c.controllers) out(w, { type:'telemetry', car:info.car, ...m });
-    }
-    // aktivasi skill: hanya kontroler aktif, dan hanya kalau skill sedang standby
-    else if (m.type === 'skill' && info.role === 'controller') {
-      const c = cars.get(info.car); if (!c || !c.controllers.has(ws)) return;
-      const sk = SKILL_BY_ID[m.skill]; if (!sk) return;
-      const now = Date.now(), a = c.skills[sk.id] || 0, dt = a ? now - a : Infinity;
-      if (!a || dt >= sk.duration + sk.cooldown) {
-        c.skills[sk.id] = now;
-        console.log(`[*] ${info.car} pakai skill ${sk.id} (${info.name})`);
-      }
-    }
-  });
-
-  ws.on('close', () => {
-    const info = clients.get(ws); clients.delete(ws);
-    if (!info) return;
-    if (info.role === 'monitor') { monitors.delete(ws); return; }
-    const c = cars.get(info.car); if (!c) return;
-    if (info.role === 'car' && c.carWs === ws) c.carWs = null;
-    if (info.role === 'controller' && c.controllers.has(ws)) {
-      c.controllers.delete(ws);
-      if (c.controllers.size === 0) c.driver = null;   // mobil bebas lagi
-    }
-    console.log(`[-] ${info.role} x ${info.car}`);
-    presence(info.car);
-  });
+  if (req.url.split('?')[0] !== '/race') { socket.destroy(); return; }
+  race.wss.handleUpgrade(req, socket, head, ws => race.wss.emit('connection', ws, req));
 });
 
-// ---------- Heartbeat: putuskan koneksi mati (HP keluar jangkauan, tab di-suspend) ----------
-// Tanpa ini, kontroler "hantu" bisa mengunci mobil karena aturan 1 kontroler per mobil.
-// Ping juga menjaga koneksi tetap hidup di balik proxy cloud (Render dsb).
+// Heartbeat: putuskan koneksi mati (HP keluar jangkauan, tab di-suspend), supaya mobil
+// tidak terkunci "pengemudi hantu". Ping juga menjaga WebSocket hidup di balik proxy cloud.
 setInterval(() => {
-  for (const ws of [...wss.clients, ...raceServer.wss.clients]) {
+  for (const ws of race.wss.clients) {
     if (!ws.isAlive) { ws.terminate(); continue; }
     ws.isAlive = false; ws.ping();
   }
 }, 15000);
 
-// ---------- 3) Hitung laju pesan per detik ----------
-setInterval(() => {
-  gInPerSec = gIn; gOutPerSec = gOut; gIn = 0; gOut = 0;
-  for (const c of cars.values()) { c.cps = c.ctrl; c.tps = c.tel; c.ctrl = 0; c.tel = 0; }
-}, 1000);
-
-// ---------- 4) Siarkan statistik ke monitor (5x/detik) ----------
-setInterval(() => {
-  if (monitors.size === 0) return;
-  let nControllers = 0, nCars = 0;
-  for (const info of clients.values()) {
-    if (info.role === 'controller') nControllers++;
-    else if (info.role === 'car') nCars++;
-  }
-  const now = Date.now();
-  const carList = [...cars.entries()].map(([id, c]) => ({
-    id, online:!!c.carWs, controllers:c.controllers.size, driver:c.driver,
-    throttle:c.lastThr, steer:c.lastStr, onlineSince:c.onlineSince,
-    skills: skillsSnapshot(c, now).list,
-    cps:c.cps, tps:c.tps, lastCtrl:c.lastCtrl, lastTel:c.lastTel,
-  }));
-  const stats = {
-    type:'stats', now, uptime:Math.floor((now-startedAt)/1000),
-    clients:{ controllers:nControllers, cars:nCars, monitors:monitors.size, total:clients.size },
-    global:{ inPerSec:gInPerSec, outPerSec:gOutPerSec },
-    cars: carList,
-  };
-  for (const w of monitors) out(w, stats);
-}, 200);
-
-// ---------- Siarkan status skill ke tiap mobil + kontrolernya (buat efek & icon) ----------
-setInterval(() => {
-  const now = Date.now();
-  for (const [id, c] of cars) {
-    if (!c.carWs && c.controllers.size === 0) continue;
-    const snap = skillsSnapshot(c, now);
-    const msg = { type:'skills', car:id, skills:snap.list, speedMul:snap.speedMul };
-    out(c.carWs, msg);
-    for (const w of c.controllers) out(w, msg);
-  }
-}, 200);
-
-// ---------- 5) Info koneksi ----------
-function lanIPs() {
-  const r = [];
-  for (const list of Object.values(os.networkInterfaces()))
-    for (const i of list || []) if (i.family === 'IPv4' && !i.internal) r.push(i.address);
-  return r;
-}
 server.listen(PORT, '0.0.0.0', () => {
-  console.log('\n=== RC Arcade Sim — relay multi-mobil aktif ===');
-  console.log(`Balapan 3D (layar)  : http://localhost:${PORT}/race3d.html            (HP scan QR di layar itu untuk menyetir)`);
-  console.log(`Arena (5 mobil)     : http://localhost:${PORT}/arena.html?n=5`);
-  console.log(`Dashboard monitor   : http://localhost:${PORT}/monitor.html`);
-  console.log(`Keyboard (laptop)   : http://localhost:${PORT}/keyboard.html   (pilih mobil: 1-5, setir: WASD/panah)`);
-  for (const ip of lanIPs())
-    console.log(`Kontroler dari HP   : http://${ip}:${PORT}/controller.html?car=car1`);
-  console.log('\nBot (beban/otomatis): node bot.js 3     (3 HP palsu di car1..car3; car4 & car5 kamu setir manual)\n');
+  console.log('\n=== RC Arcade Sim — balapan 3D aktif ===');
+  console.log(`Layar laptop  : http://localhost:${PORT}/race3d.html   (HP scan QR di layar itu)`);
+  console.log(`Dashboard     : http://localhost:${PORT}/monitor.html`);
+  for (const ip of lanIPs()) console.log(`HP (WiFi sama): http://${ip}:${PORT}/race3d.html?drive`);
+  console.log('\nBot (mobil otomatis): node bot.js 2   (bot menyetir RC yang masih kosong)\n');
 });

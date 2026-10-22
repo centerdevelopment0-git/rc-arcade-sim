@@ -1,95 +1,59 @@
-# 03 — Protokol Pesan (Kontrak HP ↔ Relay ↔ Mobil ↔ Monitor)
+# 03 — Protokol Pesan (HP ↔ Server ↔ Mobil, WebSocket `/race`)
 
-**Versi:** 0.2 (multi-mobil + monitor) · **Tanggal:** 2026-10-20
+**Versi:** 1 (balapan 3D) · **Tanggal:** 2026-10-22
 
-Semua pesan **JSON** lewat WebSocket. Selama kontrak ini dipatuhi, tiap komponen
-boleh diganti (sim → hardware).
+Semua pesan **JSON** lewat satu WebSocket: `ws(s)://<host>/race`. Selama kontrak ini dipatuhi,
+mobil boleh berupa simulasi 3D di server atau RC fisik — HP dan layar tidak perlu tahu bedanya.
+
+> Protokol 0.x (relay `hello`/`presence`/`control`/`stats` di jalur `/`) dan halaman arena 2D lama
+> **dihapus** 2026-10-22. Upgrade WebSocket ke jalur selain `/race` ditolak server.
 
 ---
 
-## 1. Tiga peran klien
-| role | siapa | kunci |
-|------|-------|-------|
-| `controller` | HP pemain | terikat ke satu `car` |
-| `car` | satu mobil (sim / RC fisik) | punya id `car` (car1, car2, …) |
-| `monitor` | dashboard | menerima `stats` seluruh sistem |
+## 1. Peran klien (`join.role`)
+| role | siapa | catatan |
+|------|-------|---------|
+| `driver` | HP pemain (`race3d.html?drive`) | memegang satu mobil `car1..car3`; mobil yang sudah dipegang → `denied` |
+| `spectator` | layar laptop (`race3d.html`) | boleh `admin` (mulai/reset) dan chat sebagai "Layar" |
+| `monitor` | dashboard (`monitor.html`) | hanya menerima `snapshot` |
+| `device` | perangkat di mobil RC fisik | server berhenti menjalankan fisika untuk mobil itu |
 
-Kunci routing adalah **`car` id**. Perintah dari controller carX → hanya ke car carX.
-Telemetry dari car carX → ke semua controller carX.
+## 2. Klien → server
+| Pesan | Dari | Isi |
+|---|---|---|
+| `join {role, car, name}` | semua | `join` lagi = **ganti mobil** (mobil lama dilepas dulu) |
+| `leave {}` | driver | lepas mobil, kembali ke pemilih RC |
+| `input {throttle, steer, t}` | driver | −1..1, di-*clamp* server; dikirim 20×/dtk |
+| `skill {skill}` | driver | `boost` / `shield` (pakai slot power-up), `horn` (jeda 1,5 dtk) |
+| `chat {text}` | driver, spectator | maks 80 karakter, jeda 0,8 dtk, karakter kontrol dibuang |
+| `admin {action}` | spectator | `start` / `reset` |
+| `telemetry {x, y, heading, speed}` | device | posisi mobil fisik (opsional) |
+| `checkpointSeen {gate}` | device | gerbang terbaca dari QR (ADR-0012) |
 
-## 2. Pesan
+## 3. Server → klien
+| Pesan | Ke | Isi |
+|---|---|---|
+| `welcome` | semua saat tersambung | `protocolVersion`, `arena`, `rules`, `cars`, riwayat `chat` (20) |
+| `joined {role, car}` / `denied {car, driver}` | yang join | hasil `join` |
+| `snapshot` | semua, 20×/dtk | `phase`, `countdownMs`, `raceMs`, `vehicles[]`, `result`, `net` |
+| `checkpointPassed`, `skillUsed`, `horn`, `chat`, `raceResult` | semua | kejadian |
+| `control {throttle, steer, cap}` | device, 30×/dtk | throttle sudah dikali batas (80%, 100% saat boost); juga heartbeat |
 
-### 2.1 `hello` (klien → server)
-```json
-{ "type":"hello", "role":"controller" | "car" | "monitor", "car":"car1" }
-```
-- `car` wajib untuk controller & car (default `car1`). Monitor mengabaikan `car`.
+### 3.1 Isi `snapshot.vehicles[]`
+`id, kind ('sim'|'physical'), driver, x, y, heading, speed, score, lap, nextGate, gatesPassed, finished, place, finishMs,
+powerUp {type, remainMs}, inventory {boost, shield}, input {throttle, steer}, io`.
 
-### 2.2 `presence` (server → controller & car di car itu)
-```json
-{ "type":"presence", "car":"car1", "carOnline":true, "controllers":1, "driver":"Budi" }
-```
+`io` dipakai dashboard untuk membuktikan jalur **input → output** per mobil:
+| Field | Arti |
+|---|---|
+| `inPerSec` | pesan `input` dari HP per detik |
+| `outPerSec` | berapa kali per detik input itu **diterapkan** ke mobil (tick fisika sim, atau `control` ke device) |
+| `msSinceInput` | umur input terakhir. > 1000 ms = failsafe, mobil berhenti |
+| `msSinceOutput` | umur output terakhir. Input segar tapi output tua = ada yang menahan (mis. hitung mundur) |
 
-### 2.2b `denied` (server → controller)
-```json
-{ "type":"denied", "car":"car1", "driver":"Budi" }
-```
-- Dikirim bila mobil sudah dipegang kontroler lain (aturan 1 kontroler per mobil).
+`net` = `inPerSec`, `outPerSec`, `kbOutPerSec`, dan `clients[]` (`role, car, name, rtt, inPerSec, outPerSec`).
 
-### 2.3 `control` (controller → server → car)
-```json
-{ "type":"control", "car":"car1", "throttle":0.0, "steer":0.0, "t":1760000000000 }
-```
-| Field | Rentang | Arti |
-|-------|---------|------|
-| `throttle` | −1.0 … 1.0 | + maju, − mundur |
-| `steer` | −1.0 … 1.0 | − kiri, + kanan |
-| `t` | epoch ms | waktu kirim (ukur latensi) |
-
-> `car` diisi server dari ikatan pengirim. Server meng-clamp `throttle`/`steer` ke −1..1 (bukan angka → 0). **Wajib** di sisi mobil: clamp nilai +
-> failsafe (anggap 0,0) bila tak ada `control` > 400 ms.
-
-### 2.4 `telemetry` (car → server → controller)
-```json
-{ "type":"telemetry", "car":"car1", "x":450, "y":280, "heading":0.0, "speed":0.0 }
-```
-
-### 2.5 `stats` (server → monitor, 5×/detik)
-```json
-{
-  "type":"stats", "now":1760000000000, "uptime":123,
-  "clients":{ "controllers":3, "cars":3, "monitors":1, "total":7 },
-  "global":{ "inPerSec":120, "outPerSec":180 },
-  "cars":[
-    { "id":"car1", "online":true, "controllers":1,
-      "cps":20, "tps":20, "lastCtrl":1760…, "lastTel":1760… }
-  ]
-}
-```
-- `cps`/`tps` = pesan kontrol/telemetry per detik per mobil (beban).
-- `lastCtrl`/`lastTel` = kapan data terakhir → dipakai monitor buat **LED kedip** (data < ~220 ms = nyala).
-
-## 3. Aturan server (relay)
-- `control` diteruskan hanya dari `controller` → ke `car` terikat.
-- `telemetry` diteruskan hanya dari `car` → ke semua `controller` mobil itu.
-- `monitor` hanya menerima `stats` (tidak ikut lalu lintas kontrol/telemetry → hemat beban).
-
-### 2.6 `skill` (controller → server)
-```json
-{ "type":"skill", "car":"car1", "skill":"turbo" }
-```
-- Minta aktifkan skill. Server hanya menerima jika skill sedang **standby**.
-
-### 2.7 `skills` (server → car + controller, ~5×/detik)
-```json
-{ "type":"skills", "car":"car1", "speedMul":1.0,
-  "skills":[ { "id":"turbo", "name":"Turbo", "icon":"⚡", "state":"active", "remain":2400 } ] }
-```
-- `state` ∈ `standby|active|cooldown`; `remain` = sisa ms.
-- `speedMul` = pengali kecepatan maks saat ini (base 0,7 → 1,0 saat turbo). Mobil pakai ini untuk efek.
-- Skill didefinisikan di array `SKILLS` (server.js) — **scalable**, tambah satu baris = satu skill baru.
-
-## 4. Perluasan
-Tambah field, jangan ubah arti lama:
-- Kontrol: `lights`, `horn`, `gear`. · Telemetry: `battery`, `rssi`.
-- Fase video: pesan signaling WebRTC (`offer`/`answer`/`ice`) lewat relay yang sama.
+## 4. Aturan keamanan
+- **Failsafe:** input lebih tua dari 1 dtk diabaikan → mobil berhenti. Mobil fisik tetap menerima `control` nol.
+- **Satu pengemudi per mobil.** Mobil dilepas otomatis saat HP `leave`, `join` mobil lain, atau putus (heartbeat 15 dtk).
+- **Clamp** semua input di server. Nama & chat dibersihkan; klien menampilkannya sebagai teks (bukan HTML).

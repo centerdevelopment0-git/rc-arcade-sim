@@ -3,281 +3,123 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monitor RC Arcade</title>
+<title>Dashboard Koneksi — RC Arcade Sim</title>
 <style>
-  :root{ --bg:#0f1115; --panel:#1a1d24; --edge:#2a2e37; --text:#e8eaed; --muted:#9aa0b0;
-         --ok:#2e9; --data:#ffd23f; --off:#444; --in:#3f84d6; --out:#b5781a;
-         --grid:#242836; --tip:#0b0d12; }
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,sans-serif;padding:16px}
-  h1{font-size:18px;margin:0 0 4px} .sub{color:var(--muted);font-size:13px;margin-bottom:16px}
-  h2{font-size:13px;color:var(--muted);margin:0 0 10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px}
-  .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(118px,1fr));gap:10px;margin-bottom:16px}
-  .tile{background:var(--panel);border:1px solid var(--edge);border-radius:10px;padding:12px}
-  .tile .v{font-size:23px;font-weight:700} .tile .k{color:var(--muted);font-size:12px;margin-top:2px}
-  .panel{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:14px;margin-bottom:16px}
-  .grid2{display:grid;grid-template-columns:1fr;gap:16px}
-  @media(min-width:900px){ .grid2{grid-template-columns:3fr 2fr} }
-  .legend{display:flex;gap:16px;font-size:12px;color:var(--muted);margin-bottom:6px}
-  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:middle}
-  .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
-  .card{background:var(--panel);border:1px solid var(--edge);border-radius:12px;padding:14px}
-  .card.offline{opacity:.5}
-  .card h3{margin:0 0 2px;display:flex;align-items:center;gap:8px;font-size:16px}
-  .driver{font-size:12px;color:var(--muted);margin-bottom:10px}
-  .action{font-size:15px;font-weight:600;margin:6px 0 10px;min-height:20px}
-  .leds{display:flex;gap:14px;margin-bottom:10px}
-  .ledwrap{display:flex;flex-direction:column;align-items:center;gap:4px;font-size:10px;color:var(--muted)}
-  .led{width:14px;height:14px;border-radius:50%;background:var(--off);transition:background .1s,box-shadow .1s}
-  .led.on{background:var(--ok);box-shadow:0 0 8px var(--ok)}
-  .led.data{background:var(--data);box-shadow:0 0 10px var(--data)}
-  .row{display:flex;justify-content:space-between;font-size:13px;padding:3px 0;border-top:1px solid #20242e}
-  .row b{color:#fff} .bad{color:#f66}
-  .log{height:260px;overflow:auto;font-size:13px;font-family:ui-monospace,monospace}
-  .log .e{padding:4px 2px;border-bottom:1px solid #20242e;display:flex;gap:8px}
-  .log .t{color:var(--muted)} .log .c{font-weight:700}
-  svg text{fill:var(--muted);font-size:11px}
-  .board{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
-  .bitem{display:flex;align-items:center;gap:10px;background:#20242e;border:1px solid var(--edge);border-radius:10px;padding:10px}
-  .bitem .nm{font-weight:700;font-size:15px} .bitem .stlabel{font-size:11px;color:var(--muted)}
-  .sled{width:16px;height:16px;border-radius:50%;flex:0 0 auto;background:#1b1e26}
-  .ledref{display:flex;flex-wrap:wrap;gap:16px;margin-top:14px;font-size:12px;color:var(--muted);border-top:1px solid #20242e;padding-top:12px}
-  .ledref .r{display:flex;align-items:center;gap:8px}
-  .cardstate{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px}
-  .skills-row{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 4px}
-  .skchip{font-size:11px;padding:2px 8px;border-radius:12px;background:#20242e;border:1px solid var(--edge);color:var(--muted)}
-  .skchip.active{color:#2ee98b;border-color:#2ee98b}
-  .skchip.cooldown{color:#ffb454;border-color:#5a4a2a}
+  :root { --bg:#0f1115; --panel:#1a1d24; --edge:#2a2e37; --text:#e8eaed; --muted:#9aa0b0; --ok:#2ee98b; --in:#3f84d6; --out:#ffb454; --bad:#ff6b6b; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; padding:16px; }
+  h1 { font-size:18px; margin:0 0 4px; } .sub { color:var(--muted); font-size:13px; margin-bottom:14px; }
+  h2 { font-size:12px; color:var(--muted); margin:0 0 10px; text-transform:uppercase; letter-spacing:.5px; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:14px; }
+  .tile, .panel, .card { background:var(--panel); border:1px solid var(--edge); border-radius:12px; padding:12px; }
+  .tile .v { font-size:22px; font-weight:700; } .tile .k { color:var(--muted); font-size:12px; }
+  .panel { margin-bottom:14px; }
+  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
+  .card h3 { margin:0 0 2px; font-size:16px; display:flex; gap:8px; align-items:center; }
+  .sw { width:12px; height:12px; border-radius:3px; display:inline-block; }
+  .who { color:var(--muted); font-size:12px; margin-bottom:8px; }
+  .leds { display:flex; gap:16px; margin:8px 0; }
+  .ledw { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10px; color:var(--muted); }
+  .led { width:14px; height:14px; border-radius:50%; background:#333; }
+  .led.on { background:var(--ok); box-shadow:0 0 8px var(--ok); }
+  .led.in { background:var(--in); box-shadow:0 0 8px var(--in); }
+  .led.out { background:var(--out); box-shadow:0 0 8px var(--out); }
+  .row { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; border-top:1px solid #20242e; }
+  .row b { color:#fff; }
+  .diag { font-size:12px; margin-top:8px; padding:6px 8px; border-radius:8px; background:#20242e; }
+  .diag.bad { color:var(--bad); } .diag.ok { color:var(--ok); }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td { padding:4px 6px; border-top:1px solid #20242e; }
+  svg text { fill:var(--muted); font-size:11px; }
+  a { color:#8ab4ff; }
 </style>
 </head>
 <body>
-  <h1>📡 Monitor RC Arcade</h1>
-  <div class="sub">Jalur: <b>HP (kontroler)</b> → <b>SERVER</b> → <b>RC car</b>. LED hijau = online · kuning kedip = data mengalir.</div>
+<h1>📡 Dashboard Koneksi — Balapan 3D</h1>
+<div class="sub">Jalur: <b>HP (input)</b> → <b>SERVER</b> → <b>mobil sim 3D / RC fisik (output)</b>. LED biru = input masuk, oranye = perintah diterapkan ke mobil.
+  Layar arena: <a href="/race3d.html">race3d.html</a></div>
 
-  <div class="tiles" id="tiles"></div>
+<div class="tiles" id="tiles"></div>
+<div class="panel"><h2>Peta koneksi</h2><svg id="map" width="100%" height="190" viewBox="0 0 760 190"></svg></div>
+<h2>Status per mobil (input → output)</h2>
+<div class="cards" id="cards"></div>
+<div class="panel" style="margin-top:14px"><h2>Klien tersambung</h2><table id="clients"></table></div>
 
-  <div class="panel">
-    <h2>Status RC — online & kode LED</h2>
-    <div class="board" id="board"></div>
-    <div class="ledref" id="ledref"></div>
-  </div>
-
-  <div class="grid2">
-    <div class="panel">
-      <h2>Beban server — 60 detik terakhir (pesan / detik)</h2>
-      <div class="legend">
-        <span><i style="background:var(--in)"></i>masuk (perintah dari HP)</span>
-        <span><i style="background:var(--out)"></i>keluar (ke mobil + telemetry)</span>
-      </div>
-      <svg id="chart" viewBox="0 0 900 260" style="width:100%;height:auto"></svg>
-    </div>
-    <div class="panel">
-      <h2>Log aktivitas (input tiap berubah)</h2>
-      <div class="log" id="log"></div>
-    </div>
-  </div>
-
-  <div class="panel">
-    <h2>Peta koneksi end-to-end</h2>
-    <svg id="svg" viewBox="0 0 900 220" style="width:100%;height:auto"></svg>
-  </div>
-
-  <h2>Status per mobil (LED + input)</h2>
-  <div class="cards" id="cards"></div>
-
-<script src="rc-state.js"></script>
 <script>
-// ---------- state ----------
-const histIn = [], histOut = [];          // 1 sampel / detik, maks 60
-let lastSec = 0;
-const lastAction = {};                     // carId -> label terakhir (untuk log)
-const logEntries = [];                     // {time, car, color, text}
-let hoverIdx = -1;
-const ledSpec = {};                        // carId -> {pattern, color} untuk animasi LED
+const COLORS = { car1:'#3f84d6', car2:'#2ee98b', car3:'#ff8a3d' };
+const PHASE = { lobby:'Latihan bebas', countdown:'Hitung mundur', racing:'Balapan', finished:'Selesai' };
+const $ = id => document.getElementById(id);
+const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const rc = id => id.toUpperCase().replace('CAR', 'RC');
+let ws, last = null;
 
-// ---------- koneksi monitor ----------
-function connect(){
-  const ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);
-  ws.onopen = () => ws.send(JSON.stringify({ type:'hello', role:'monitor' }));
-  ws.onclose = () => setTimeout(connect, 1000);
-  ws.onmessage = (e) => { const s = JSON.parse(e.data); if (s.type==='stats') render(s); };
+function connect() {
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/race`);
+  ws.onopen = () => ws.send(JSON.stringify({ type:'join', role:'monitor' }));
+  ws.onclose = () => { $('tiles').innerHTML = '<div class="tile">putus — menyambung ulang…</div>'; setTimeout(connect, 1000); };
+  ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'snapshot') { last = m; render(m); } };
 }
 connect();
 
-const tilesEl=document.getElementById('tiles'), cardsEl=document.getElementById('cards'),
-      svg=document.getElementById('svg'), chart=document.getElementById('chart'), logEl=document.getElementById('log'),
-      boardEl=document.getElementById('board'), ledrefEl=document.getElementById('ledref');
-
-// state RC dari sinyal stats
-function computeState(c, now){
-  return rcState({
-    online:c.online, controllers:c.controllers,
-    msSinceCtrl: now - (c.lastCtrl||0),
-    moving: Math.abs(c.throttle)>0.12 || Math.abs(c.steer)>0.12,
-    justConnected: c.online && c.onlineSince>0 && (now - c.onlineSince) < 1500,
-  });
-}
-// legenda kode LED (sekali bangun)
-ledrefEl.innerHTML = Object.keys(RC_STATES).map(k=>{ const s=RC_STATES[k];
-  return `<div class="r"><span class="sled" id="ref-led-${k}" style="width:13px;height:13px"></span>
-          <b style="color:${s.color}">${s.label}</b> — ${s.desc}</div>`; }).join('');
-
-// animasi LED (blink sesuai pola, lepas dari laju stats)
-function animate(){
-  const t=performance.now();
-  for(const id in ledSpec){ const sp=ledSpec[id], on=ledOn(sp.pattern,t);
-    for(const pre of ['board-led-','card-led-']){ const el=document.getElementById(pre+id);
-      if(el){ el.style.background = on?sp.color:'#1b1e26';
-        el.style.boxShadow = (on&&sp.pattern!=='solid'&&sp.pattern!=='off')?('0 0 8px '+sp.color):'none'; } } }
-  for(const k in RC_STATES){ const s=RC_STATES[k], el=document.getElementById('ref-led-'+k);
-    if(el) el.style.background = ledOn(s.pattern,t)?s.color:'#1b1e26'; }
-  requestAnimationFrame(animate);
-}
-requestAnimationFrame(animate);
-
-function tile(v,k){ return `<div class="tile"><div class="v">${v}</div><div class="k">${k}</div></div>`; }
-
-// terjemahkan throttle/steer -> aksi terbaca
-function actionText(c){
-  if(!c.online || c.controllers===0) return {txt:'—', arrow:''};
-  const t=c.throttle, s=c.steer;
-  const dir = t>0.15 ? 'maju' : t<-0.15 ? 'mundur' : 'diam';
-  const turn = s>0.15 ? 'belok kanan' : s<-0.15 ? 'belok kiri' : 'lurus';
-  let txt = (dir==='diam' && turn==='lurus') ? 'berhenti'
-          : (dir==='diam') ? turn
-          : (turn==='lurus') ? dir : (dir+' + '+turn);
-  const arrow = (t>0.15?'⬆':t<-0.15?'⬇':'') + (s>0.15?'➡':s<-0.15?'⬅':'');
-  return {txt, arrow};
+// kenapa input masuk tapi tidak ada output? (diagnosis yang sama dengan logika server)
+function diagnose(v, s) {
+  const inOk = v.io.msSinceInput != null && v.io.msSinceInput < 1000;
+  const outOk = v.io.msSinceOutput != null && v.io.msSinceOutput < 300;
+  if (!v.driver && v.kind !== 'physical') return ['', 'Belum ada pengemudi'];
+  if (!inOk) return ['bad', 'Tidak ada input dari HP > 1 dtk → failsafe, mobil berhenti'];
+  if (s.phase === 'countdown') return ['', 'Input ditahan selama hitung mundur'];
+  if (!outOk) return ['bad', 'Input masuk tapi tidak diterapkan ke mobil'];
+  return ['ok', v.kind === 'physical' ? 'Input → perintah ke RC fisik ✔' : 'Input → mobil sim 3D bergerak ✔'];
 }
 
-const stMap = {};
-function render(s){
-  const now=s.now;
-  // state + kode LED tiap mobil -> status board
-  s.cars.forEach(c=>{ stMap[c.id]=computeState(c,now); ledSpec[c.id]={pattern:stMap[c.id].pattern, color:stMap[c.id].color}; });
-  boardEl.innerHTML = s.cars.map(c=>{ const st=stMap[c.id];
-    return `<div class="bitem"><span class="sled" id="board-led-${c.id}"></span>
-      <div><div class="nm" style="color:${colorFor(c.id)}">${c.id.toUpperCase()}</div>
-      <div class="stlabel" style="color:${st.color}">${st.label}</div></div></div>`;
-  }).join('') || '<div class="sub">Belum ada mobil.</div>';
+function render(s) {
+  const n = s.net;
+  const drivers = n.clients.filter(c => c.role === 'driver').length;
+  $('tiles').innerHTML = [
+    [PHASE[s.phase], 'fase'], [drivers + ' / 3', 'pengemudi'], [n.clients.length, 'klien'],
+    [n.inPerSec + '/s', 'pesan masuk'], [n.outPerSec + '/s', 'pesan keluar'], [n.kbOutPerSec + ' kB/s', 'data keluar'],
+  ].map(([v, k]) => `<div class="tile"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
 
-  // tiles
-  const online=s.cars.filter(c=>c.online).length;
-  tilesEl.innerHTML =
-    tile(s.clients.total,'total klien') + tile(s.clients.controllers,'kontroler (HP)') +
-    tile(online+'/'+s.cars.length,'RC online') + tile(s.global.inPerSec,'masuk /dtk') +
-    tile(s.global.outPerSec,'keluar /dtk') + tile(fmtUptime(s.uptime),'uptime');
-
-  // histori (1x/detik)
-  const sec=Math.floor(now/1000);
-  if(sec!==lastSec){ lastSec=sec; histIn.push(s.global.inPerSec); histOut.push(s.global.outPerSec);
-    if(histIn.length>60){histIn.shift();histOut.shift();} }
-  drawChart();
-
-  // kartu + log
-  cardsEl.innerHTML = s.cars.map(c=>{
-    const dataIn=(now-c.lastCtrl)<220, dataOut=(now-c.lastTel)<220;
-    const a=actionText(c);
-    // catat log saat aksi berubah
-    if(c.online && c.controllers>0){
-      if(lastAction[c.id]!==a.txt){ lastAction[c.id]=a.txt;
-        logEntries.unshift({time:fmtClock(now), car:c.id.toUpperCase(), color:colorFor(c.id), text:(a.arrow+' '+a.txt).trim(), driver:c.driver||''});
-        if(logEntries.length>50) logEntries.pop();
-      }
-    } else { lastAction[c.id]=undefined; }
-    return `<div class="card ${c.online?'':'offline'}">
-      <h3><span style="color:${colorFor(c.id)}">■</span> ${c.id.toUpperCase()}</h3>
-      <div class="driver">👤 ${c.driver || '(kosong)'}</div>
-      <div class="cardstate"><span class="sled" id="card-led-${c.id}" style="width:14px;height:14px"></span><b style="color:${stMap[c.id].color}">${stMap[c.id].label}</b></div>
-      <div class="action">${a.arrow} ${a.txt}</div>
+  $('cards').innerHTML = s.vehicles.map(v => {
+    const inOn = v.io.msSinceInput != null && v.io.msSinceInput < 250;
+    const outOn = v.io.msSinceOutput != null && v.io.msSinceOutput < 250;
+    const online = !!v.driver || v.kind === 'physical';
+    const rtt = n.clients.find(c => c.role === 'driver' && c.car === v.id)?.rtt;
+    const [cls, text] = diagnose(v, s);
+    return `<div class="card"><h3><span class="sw" style="background:${COLORS[v.id]}"></span>${rc(v.id)}
+        <span style="font-size:12px;color:var(--muted);font-weight:400">${v.kind === 'physical' ? '🔌 RC fisik' : 'sim 3D'}</span></h3>
+      <div class="who">👤 ${v.driver ? esc(v.driver) : '(kosong)'}</div>
       <div class="leds">
-        <div class="ledwrap"><span class="led ${c.online?'on':''}"></span>ONLINE</div>
-        <div class="ledwrap"><span class="led ${dataIn?'data':''}"></span>INPUT</div>
-        <div class="ledwrap"><span class="led ${dataOut?'data':''}"></span>OUTPUT</div>
+        <div class="ledw"><div class="led ${online ? 'on' : ''}"></div>ONLINE</div>
+        <div class="ledw"><div class="led ${inOn ? 'in' : ''}"></div>INPUT</div>
+        <div class="ledw"><div class="led ${outOn ? 'out' : ''}"></div>OUTPUT</div>
       </div>
-      <div class="skills-row">${(c.skills||[]).map(sk=>`<span class="skchip ${sk.state}">${sk.icon} ${sk.name}: ${sk.state==='standby'?'siap':sk.state+' '+(sk.remain/1000).toFixed(1)+'s'}</span>`).join('')}</div>
-      <div class="row"><span>Gas / Belok</span><b>${c.throttle.toFixed(2)} / ${c.steer.toFixed(2)}</b></div>
-      <div class="row"><span>Perintah /dtk</span><b>${c.cps}</b></div>
-      <div class="row"><span>Telemetry /dtk</span><b>${c.tps}</b></div>
-    </div>`;
-  }).join('') || '<div class="sub">Belum ada mobil. Buka arena.html atau jalankan bot.js.</div>';
+      <div class="row"><span>Gas / Belok</span><b>${v.input.throttle.toFixed(2)} / ${v.input.steer.toFixed(2)}</b></div>
+      <div class="row"><span>Input dari HP /dtk</span><b>${v.io.inPerSec}</b></div>
+      <div class="row"><span>Output ke mobil /dtk</span><b>${v.io.outPerSec}</b></div>
+      <div class="row"><span>Laju</span><b>${(Math.abs(v.speed) * 3.6).toFixed(1)} km/j</b></div>
+      <div class="row"><span>RTT HP</span><b>${rtt == null ? '–' : rtt + ' ms'}</b></div>
+      <div class="row"><span>Skor</span><b>${v.score}</b></div>
+      <div class="diag ${cls}">${text}</div></div>`;
+  }).join('');
 
-  logEl.innerHTML = logEntries.map(e=>
-    `<div class="e"><span class="t">${e.time}</span><span class="c" style="color:${e.color}">${e.car}</span><span>${e.text}${e.driver?(' · '+e.driver):''}</span></div>`
-  ).join('') || '<div class="sub">Belum ada aktivitas.</div>';
+  $('clients').innerHTML = '<tr style="color:var(--muted)"><td>Peran</td><td>Nama</td><td>Mobil</td><td>RTT</td><td>Masuk/s</td><td>Keluar/s</td></tr>' +
+    n.clients.map(c => `<tr><td>${esc(c.role)}</td><td>${esc(c.name)}</td><td>${c.car ? rc(c.car) : '–'}</td>
+      <td>${c.rtt == null ? '–' : c.rtt + ' ms'}</td><td>${c.inPerSec}</td><td>${c.outPerSec}</td></tr>`).join('');
 
-  drawDiagram(s, now);
-}
-
-// ---------- grafik beban historis ----------
-function drawChart(){
-  const W=900,H=260, mL=44,mR=54,mT=12,mB=24;
-  const pw=W-mL-mR, ph=H-mT-mB;
-  const n=Math.max(histIn.length,1);
-  const maxV=Math.max(10, ...histIn, ...histOut);
-  const xAt=i=> mL + (n<=1?0:(i/(n-1))*pw);
-  const yAt=v=> mT + ph - (v/maxV)*ph;
-  let el='';
-  // gridlines + label sumbu Y
-  for(let g=0;g<=4;g++){ const v=Math.round(maxV*g/4), y=yAt(v);
-    el+=`<line x1="${mL}" y1="${y}" x2="${mL+pw}" y2="${y}" stroke="var(--grid)" stroke-width="1"/>`;
-    el+=`<text x="${mL-8}" y="${y+4}" text-anchor="end">${v}</text>`; }
-  el+=`<text x="${mL}" y="${H-6}">-60d</text><text x="${mL+pw}" y="${H-6}" text-anchor="end">sekarang</text>`;
-  // garis
-  const poly=(arr,color)=>{ if(arr.length<2)return '';
-    const pts=arr.map((v,i)=>`${xAt(i).toFixed(1)},${yAt(v).toFixed(1)}`).join(' ');
-    return `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="2"/>`; };
-  el+=poly(histIn,'var(--in)')+poly(histOut,'var(--out)');
-  // label langsung di ujung (nilai terkini)
-  if(histIn.length){ const i=histIn.length-1;
-    el+=`<circle cx="${xAt(i)}" cy="${yAt(histIn[i])}" r="3.5" fill="var(--in)"/>`;
-    el+=`<text x="${xAt(i)+8}" y="${yAt(histIn[i])+4}" fill="#cfe0ff">${histIn[i]}</text>`;
-    el+=`<circle cx="${xAt(i)}" cy="${yAt(histOut[i])}" r="3.5" fill="var(--out)"/>`;
-    el+=`<text x="${xAt(i)+8}" y="${yAt(histOut[i])+4}" fill="#e7c98a">${histOut[i]}</text>`; }
-  // crosshair + tooltip (hover)
-  if(hoverIdx>=0 && hoverIdx<histIn.length){ const x=xAt(hoverIdx);
-    el+=`<line x1="${x}" y1="${mT}" x2="${x}" y2="${mT+ph}" stroke="#4a5062" stroke-width="1" stroke-dasharray="3 3"/>`;
-    const secsAgo=(histIn.length-1-hoverIdx);
-    const tipW=150, tipX=Math.min(Math.max(x-tipW/2,mL), mL+pw-tipW);
-    el+=`<rect x="${tipX}" y="${mT}" width="${tipW}" height="54" rx="6" fill="var(--tip)" stroke="var(--edge)"/>`;
-    el+=`<text x="${tipX+10}" y="${mT+18}" fill="#fff">${secsAgo===0?'sekarang':secsAgo+' dtk lalu'}</text>`;
-    el+=`<text x="${tipX+10}" y="${mT+34}" fill="#cfe0ff">masuk: ${histIn[hoverIdx]}/dtk</text>`;
-    el+=`<text x="${tipX+10}" y="${mT+48}" fill="#e7c98a">keluar: ${histOut[hoverIdx]}/dtk</text>`; }
-  chart.innerHTML=el;
-}
-chart.addEventListener('mousemove',(e)=>{
-  const r=chart.getBoundingClientRect(); const mL=44,mR=54,W=900; const pw=W-mL-mR;
-  const xv=(e.clientX-r.left)/r.width*W;               // -> koordinat viewBox
-  const n=histIn.length; if(n<2){hoverIdx=-1;return;}
-  const i=Math.round((xv-mL)/pw*(n-1)); hoverIdx=Math.min(Math.max(i,0),n-1); drawChart();
-});
-chart.addEventListener('mouseleave',()=>{ hoverIdx=-1; drawChart(); });
-
-// ---------- diagram end-to-end ----------
-function drawDiagram(s, now){
-  const n=s.cars.length||1, H=220, topPad=20, gap=(H-topPad*2)/Math.max(1,n), xHP=130,xSrv=450,xRC=770;
-  let el='';
-  const busy=s.global.inPerSec+s.global.outPerSec;
-  el+=`<rect x="${xSrv-70}" y="80" width="140" height="60" rx="10" fill="#20242e" stroke="#3a4050"/>`;
-  el+=`<text x="${xSrv}" y="104" text-anchor="middle" fill="#fff" font-size="14" font-weight="700">SERVER</text>`;
-  el+=`<text x="${xSrv}" y="124" text-anchor="middle">${busy} msg/dtk</text>`;
-  s.cars.forEach((c,i)=>{ const y=topPad+gap*i+gap/2;
-    const dIn=(now-c.lastCtrl)<220, dOut=(now-c.lastTel)<220, col=colorFor(c.id);
-    el+=`<circle cx="${xHP}" cy="${y}" r="9" fill="${c.controllers>0?col:'#333'}"/>`;
-    el+=`<text x="${xHP-16}" y="${y+4}" text-anchor="end">${c.driver||('HP×'+c.controllers)}</text>`;
-    el+=line(xHP+9,y,xSrv-70,110, dIn?'#ffd23f':'#2a2e37', dIn?2.5:1);
-    el+=line(xSrv+70,110,xRC-12,y, dOut?'#ffd23f':'#2a2e37', dOut?2.5:1);
-    el+=`<circle cx="${xRC}" cy="${y}" r="10" fill="${c.online?col:'#333'}" stroke="${c.online?'#2e9':'#555'}" stroke-width="2"/>`;
-    el+=`<text x="${xRC+16}" y="${y+4}" fill="${c.online?'#fff':'#666'}">${c.id.toUpperCase()}</text>`;
+  // peta: HP pengemudi (kiri) -> server (tengah) -> mobil (kanan)
+  const ys = [40, 95, 150];
+  let svg = `<rect x="320" y="70" width="120" height="50" rx="10" fill="#20242e" stroke="#2a2e37"/><text x="380" y="92" text-anchor="middle" style="fill:#fff;font-weight:700">SERVER</text>
+    <text x="380" y="108" text-anchor="middle">${n.inPerSec} in · ${n.outPerSec} out /s</text>`;
+  s.vehicles.forEach((v, i) => {
+    const y = ys[i], inOn = v.io.msSinceInput != null && v.io.msSinceInput < 250, outOn = v.io.msSinceOutput != null && v.io.msSinceOutput < 250;
+    svg += `<line x1="150" y1="${y}" x2="320" y2="95" stroke="${inOn ? '#3f84d6' : '#2a2e37'}" stroke-width="${inOn ? 3 : 1.5}"/>
+      <line x1="440" y1="95" x2="610" y2="${y}" stroke="${outOn ? '#ffb454' : '#2a2e37'}" stroke-width="${outOn ? 3 : 1.5}"/>
+      <circle cx="140" cy="${y}" r="9" fill="${v.driver ? COLORS[v.id] : '#333'}"/><text x="125" y="${y + 4}" text-anchor="end">📱 ${v.driver ? esc(v.driver) : '–'}</text>
+      <circle cx="620" cy="${y}" r="9" fill="${COLORS[v.id]}"/><text x="636" y="${y + 4}">${rc(v.id)}${v.kind === 'physical' ? ' 🔌' : ''}</text>`;
   });
-  svg.innerHTML=el;
+  $('map').innerHTML = svg;
 }
-function line(x1,y1,x2,y2,color,w){ return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${w}"/>`; }
-
-const PAL=['#36c','#2e9','#e85','#b7f','#fd5','#5df','#f58','#8f8','#f88','#88f'];
-function colorFor(id){ const n=parseInt(id.replace(/\D/g,''),10)||1; return PAL[(n-1)%PAL.length]; }
-function fmtUptime(s){ const m=Math.floor(s/60),ss=s%60; return m?`${m}m ${ss}s`:`${ss}s`; }
-function fmtClock(ms){ const d=new Date(ms); return d.toTimeString().slice(0,8); }
 </script>
 </body>
 </html>

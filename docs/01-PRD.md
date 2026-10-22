@@ -32,7 +32,7 @@ seluruh alur (HP → cloud → mobil bergerak) bisa dibuktikan tanpa hardware.
 ## 5. Lingkup (scope)
 
 ### ✅ Dalam lingkup — Fase 1 (sekarang)
-- Kontroler HP (joystick sentuh: gas + belok).
+- Setir dari HP: tombol ◀ ▶ + pedal gas (multitouch).
 - Server relay "cloud" (meneruskan perintah & telemetry).
 - Mobil simulasi (fisika sederhana + visual pergerakan).
 - Failsafe: mobil berhenti bila perintah putus > 0,4 dtk.
@@ -61,7 +61,7 @@ seluruh alur (HP → cloud → mobil bergerak) bisa dibuktikan tanpa hardware.
 ## 7. Alur pengguna inti (Fase 1)
 1. Operator/kamu buka layar **Mobil** (atau nyalakan RC car) → tersambung ke room.
 2. Pemain buka **Kontroler** di HP → masuk room yang sama.
-3. Pemain geser joystick → perintah lari ke server → diteruskan ke mobil → **mobil bergerak**.
+3. Pemain tekan gas & belok → perintah lari ke server → diterapkan ke mobil → **mobil bergerak**.
 4. Telemetry (laju, posisi) balik ke HP sebagai umpan balik.
 5. Pemain berhenti / tutup app → mobil berhenti otomatis (failsafe).
 

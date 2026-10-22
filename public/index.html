@@ -1,35 +1,35 @@
 <!doctype html><html lang="id"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1"><title>RC Arcade Sim</title>
-<style>body{margin:0;background:#0f1115;color:#e8eaed;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100dvh;padding:24px}
-.card{background:#1a1d24;padding:28px;border-radius:14px;max-width:420px;width:100%}
+<style>body{margin:0;background:#0f1115;color:#e8eaed;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100dvh;padding:24px;box-sizing:border-box}
+.card{background:#1a1d24;padding:26px;border-radius:14px;max-width:560px;width:100%}
 h2{margin:0 0 4px} p{color:#8a90a0;font-size:14px;margin-top:0}
-a{display:block;margin:10px 0;padding:14px;border-radius:10px;background:#36c;color:#fff;text-decoration:none;font-weight:600}
-a.alt{background:#2a2e37}
-.qr{display:flex;gap:14px;align-items:center;margin-top:16px;padding-top:16px;border-top:1px solid #2a2e37}
-.qr #qr{width:110px;flex:0 0 110px;background:#fff;border-radius:8px;line-height:0} .qr #qr:empty{display:none}
-.qr code{display:block;font-size:11px;color:#8ab4ff;word-break:break-all;margin-top:6px} small{display:block;color:#8a90a0;font-weight:400;font-size:12px;margin-top:3px}</style></head>
-<body><div class="card"><h2>🕹️ RC Arcade Sim</h2>
-<p>Simulasi multi-mobil: HP → server → banyak RC car.</p>
-<a href="/race3d.html" style="background:#2b8a4e">🏁 Balapan 3D (BARU)<small>Buka di laptop → HP scan QR di layar itu, setir dengan kamera POV</small></a>
-<a href="/arena.html?n=5">🏟️ Arena (semua mobil)<small>Buka di laptop — tampilkan RC1..RC5 bergerak</small></a>
-<a href="/controller.html?car=car1">🎮 Kontroler HP (dua jempol)<small>Buka di HP — nama + pilih RC, gas & belok sentuh</small></a>
-<a href="/keyboard.html">⌨️ Kontroler Keyboard<small>Buka di laptop — pilih mobil 1-5, setir WASD/panah</small></a>
-<a class="alt" href="/monitor.html">📡 Dashboard Monitor<small>Jalur koneksi, beban, grafik, log input, LED</small></a>
-<div class="qr"><div id="qr"></div><div><b>📱 Scan dari HP</b><small>buka kontroler RC1 di HP</small>
-<code id="qrurl"></code></div></div>
+a.btn{display:block;margin:10px 0;padding:14px;border-radius:10px;background:#2b8a4e;color:#fff;text-decoration:none;font-weight:600}
+a.alt{background:#2a2e37} small{display:block;color:#b7bdc9;font-weight:400;font-size:12px;margin-top:3px}
+.qrs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #2a2e37}
+.qrs a{color:#fff;text-decoration:none;text-align:center;font-weight:700;font-size:14px}
+.qrs .qr{background:#fff;border-radius:8px;line-height:0;margin-bottom:6px}</style></head>
+<body><div class="card"><h2>🏁 RC Arcade Sim</h2>
+<p>Balapan 3D multiplayer: HP → server → mobil (sim 3D sekarang, RC fisik nanti).</p>
+<a class="btn" href="/race3d.html">🖥️ Layar arena (laptop)<small>Arena, papan skor, tombol mulai, kisi POV semua pemain</small></a>
+<a class="btn alt" href="/monitor.html">📡 Dashboard koneksi<small>Input & output per mobil, RTT, beban server</small></a>
+<a class="btn alt" href="/race3d.html?drive">📱 Setir dari perangkat ini<small>Pilih RC sendiri</small></a>
+<div class="qrs" id="qrs"></div>
 </div>
 <script src="/vendor/qrcode.js"></script>
 <script>
-// Alamat kontroler untuk HP. Kalau dibuka via localhost, pakai IP WiFi laptop (dari /healthz).
+// QR per RC: scan dari HP langsung masuk ke mobil itu. Kalau dibuka via localhost, pakai IP WiFi laptop.
 (async () => {
   let base = location.origin;
   if (['localhost','127.0.0.1'].includes(location.hostname)) {
     try { const h = await (await fetch('/healthz')).json(); if (h.lan && h.lan[0]) base = h.lan[0]; } catch {}
   }
-  const url = base + '/controller.html?car=car1';
-  document.getElementById('qrurl').textContent = url;
-  if (typeof qrcode === 'undefined') return;           // lib gagal dimuat: cukup tampilkan link
-  const q = qrcode(0, 'M'); q.addData(url); q.make();
-  document.getElementById('qr').innerHTML = q.createSvgTag({ cellSize:4, margin:2, scalable:true });
+  const colors = ['#3f84d6', '#2ee98b', '#ff8a3d'];
+  document.getElementById('qrs').innerHTML = [1, 2, 3].map(i => {
+    const url = `${base}/race3d.html?drive&car=car${i}`;
+    let svg = '';
+    if (typeof qrcode !== 'undefined') { const q = qrcode(0, 'M'); q.addData(url); q.make(); svg = q.createSvgTag({ cellSize:3, margin:2, scalable:true }); }
+    return `<a href="${url}"><div class="qr">${svg}</div><span style="color:${colors[i - 1]}">📱 RC${i}</span></a>`;
+  }).join('');
 })();
-</script></body></html>
+</script>
+</body></html>
