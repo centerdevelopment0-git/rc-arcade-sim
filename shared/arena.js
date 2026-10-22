@@ -39,6 +39,10 @@ export const RULES = {
   boostCap: 1.0,      // saat boost
   countdownMs: 3000,
   raceTimeoutMs: 5 * 60 * 1000,
+  // 'button' = power-up dari gerbang masuk slot, pemain menekan tombol skill untuk memakai (konsep "Lapangan").
+  // 'auto'   = langsung aktif saat lewat gerbang (usulan awal ADR-0010).
+  powerUpActivation: 'button',
+  maxPerPowerUp: 1,   // isi slot maksimal per jenis
   powerUps: {
     boost:  { durationMs: 3000, label: 'Boost',  icon: '⚡' },  // batas kecepatan 80% -> 100%
     shield: { durationMs: 5000, label: 'Shield', icon: '🛡️' }, // tabrakan tidak memperlambat

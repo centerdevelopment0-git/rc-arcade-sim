@@ -13,6 +13,21 @@ ADR-0010 (power-up & skor; Cidi 2026-10-22: langsung dipakai, pemenang = skor te
 | Room | `race-server.js` | Server authoritative: tick 30 Hz, snapshot 20 Hz, failsafe input basi 1 dtk |
 | Tampilan | `public/race3d.html` | Three.js: layar penonton (laptop) & mode setir POV (HP, `?drive`) |
 
+## Dicocokkan dengan diagram konsep "Lapangan"
+| Konsep | Di sim | Catatan |
+|---|---|---|
+| Mobil RC di lintasan | ✅ 3 mobil, arena 12 × 8 m | Bentuk lintasan masih arena terbuka + gerbang (ADR-0009), belum oval berdinding dalam |
+| Router Wi-Fi di tengah | — | Hanya relevan di lapangan fisik |
+| Server | ✅ `race-server.js` | Server authoritative |
+| Client 1–3 via HP | ✅ `race3d.html?drive` | Satu pengemudi per mobil |
+| Traffic monitor via web | ✅ panel 📡 Traffic di layar laptop | Pesan masuk/keluar per detik, kB/s, RTT per klien |
+| Map overlay | ✅ peta mini kiri atas | Posisi semua mobil + gerbang berikutnya |
+| Status bar | ✅ atas | Fase, lap, gerbang berikutnya, skor & peringkat, kecepatan, power-up aktif |
+| Chat box | ✅ kanan | Maks 80 karakter, jeda 0,8 dtk, riwayat 20 pesan untuk yang baru masuk |
+| Joystick | ✅ satu joystick kiri bawah | Atas = gas, kiri/kanan = belok |
+| Skill buttons | ✅ ⚡ boost, 🛡️ shield, 📣 klakson | Power-up dari gerbang masuk slot, dipakai dengan tombol |
+| (tambahan) POV semua pemain di laptop | ✅ kisi 2×2 (`?view=pov`) | Render ulang 3D, bukan video dari HP |
+
 ## Kenapa logika yang sama dipakai mobil fisik
 `Race` tidak tahu apakah mobilnya virtual atau fisik. Ia hanya menerima "gerbang N terlewati":
 
@@ -31,8 +46,8 @@ Jadi skor, power-up, dan pemenang identik di dua dunia. Ini sudah diuji di `test
 ## Protokol `/race` (versi 1)
 | Arah | Pesan |
 |---|---|
-| klien → server | `join {role:'driver'\|'spectator'\|'device', car, name}`, `input {throttle, steer, t}`, `admin {action:'start'\|'reset'}` |
-| server → klien | `welcome {arena, rules}`, `joined`, `denied`, `snapshot` (20 Hz), `checkpointPassed`, `raceResult` |
+| klien → server | `join {role:'driver'\|'spectator'\|'device', car, name}`, `input {throttle, steer, t}`, `skill {skill:'boost'\|'shield'\|'horn'}`, `chat {text}`, `admin {action:'start'\|'reset'}` |
+| server → klien | `welcome {arena, rules, chat}`, `joined`, `denied`, `snapshot` (20 Hz, termasuk `inventory` per mobil dan `net` = statistik traffic), `checkpointPassed`, `skillUsed`, `horn`, `chat`, `raceResult` |
 | server → device | `control {throttle, steer, cap}` (30 Hz, juga berfungsi sebagai heartbeat) |
 
 Input -1..1 (ADR-0007 krca memakai -100..100; konversi cukup di satu tempat saat digabung).
@@ -45,7 +60,9 @@ Input -1..1 (ADR-0007 krca memakai -100..100; konversi cukup di satu tempat saat
   ~100–200 ms, masih terasa sedikit delay saat belok tajam.
 - Fisika sederhana (tidak ada drift/suspensi). Angka kecepatan (maks 4 m/s ≈ 14 km/j) perlu
   dicocokkan dengan mobil RC yang dibeli.
-- Angka skor & power-up ada di `RULES` (`shared/arena.js`) dan mudah diubah.
+- Angka skor & power-up ada di `RULES` (`shared/arena.js`) dan mudah diubah. `RULES.powerUpActivation`
+  = `'button'` (pakai tombol skill, default) atau `'auto'` (langsung aktif saat lewat gerbang).
+- Chat belum ada filter kata kasar; siapa pun yang membuka layar penonton bisa ikut chat sebagai "Layar".
 
 ## Langkah berikutnya (usulan)
 1. Simulasi kamera membaca QR: render QR di gerbang 3D lalu decode dari frame POV, supaya

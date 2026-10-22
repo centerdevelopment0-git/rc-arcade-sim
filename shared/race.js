@@ -17,7 +17,7 @@ export class Race {
   }
 
   addVehicle(id) { if (!this.cars.has(id)) this.cars.set(id, this.#fresh()); return this.cars.get(id); }
-  #fresh() { return { score: 0, lap: 0, nextGate: 1, gatesPassed: 0, finished: false, place: null, finishMs: null, powerUp: null }; }
+  #fresh() { return { score: 0, lap: 0, nextGate: 1, gatesPassed: 0, finished: false, place: null, finishMs: null, powerUp: null, inventory: {} }; }
 
   // mulai: semua skor di-reset, hitung mundur, lalu racing. ids = mobil yang ikut.
   start(now, ids) {
@@ -50,7 +50,11 @@ export class Race {
     const g = this.arena.gates[gate];
     let points = this.rules.gatePoints, powerUp = null;
     c.gatesPassed++;
-    if (g.powerUp) { powerUp = g.powerUp; c.powerUp = { type: powerUp, until: now + this.rules.powerUps[powerUp].durationMs }; }
+    if (g.powerUp) {
+      powerUp = g.powerUp;
+      if (this.rules.powerUpActivation === 'auto') this.#activate(c, powerUp, now);
+      else c.inventory[powerUp] = Math.min(this.rules.maxPerPowerUp, (c.inventory[powerUp] || 0) + 1);
+    }
     if (gate === 0) {
       c.lap++; points += this.rules.lapPoints;
       if (c.lap >= this.arena.laps) {
@@ -62,6 +66,16 @@ export class Race {
     c.nextGate = (gate + 1) % this.arena.gates.length;
     return { type: 'checkpointPassed', vehicleId: id, gate, lap: c.lap, points, score: c.score, powerUp, finished: c.finished, place: c.place };
   }
+
+  // pemain menekan tombol skill: pakai power-up dari slot (hanya saat balapan)
+  useSkill(id, type, now) {
+    const c = this.cars.get(id);
+    if (!c || this.phase !== 'racing' || c.finished || !this.rules.powerUps[type] || !(c.inventory[type] > 0)) return null;
+    c.inventory[type]--;
+    this.#activate(c, type, now);
+    return { type: 'skillUsed', vehicleId: id, skill: type, untilMs: this.rules.powerUps[type].durationMs };
+  }
+  #activate(c, type, now) { c.powerUp = { type, until: now + this.rules.powerUps[type].durationMs }; }
 
   // panggil tiap tick; mengembalikan hasil sekali saat balapan selesai
   tick(now) {

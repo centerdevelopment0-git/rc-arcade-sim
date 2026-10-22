@@ -9,10 +9,13 @@
 //
 // Klien -> server : join {role:'driver'|'spectator'|'device', car, name}
 //                   input {throttle, steer, t}          (driver, 20 Hz)
+//                   skill {skill:'boost'|'shield'|'horn'} (driver, tombol skill)
+//                   chat {text}                         (driver & spectator)
 //                   admin {action:'start'|'reset'}      (spectator)
 //                   telemetry {x,y,heading,speed}       (device)
 //                   checkpointSeen {gate}               (device)
-// Server -> klien : welcome, denied, snapshot (20 Hz), checkpointPassed, raceResult,
+// Server -> klien : welcome, denied, snapshot (20 Hz, + statistik traffic), checkpointPassed,
+//                   skillUsed, horn, chat, raceResult,
 //                   control {throttle, steer, cap}      (ke device)
 
 import { WebSocketServer } from 'ws';
@@ -23,6 +26,10 @@ import { Race } from './shared/race.js';
 export const PROTOCOL_VERSION = 1;
 export const CAR_IDS = ['car1', 'car2', 'car3'];
 const TICK_HZ = 30, SNAP_HZ = 20, STALE_MS = 1000;   // input basi > 1 dtk -> mobil berhenti (failsafe)
+const CHAT_MAX = 80, CHAT_HISTORY = 20, CHAT_GAP_MS = 800, HORN_GAP_MS = 1500;
+
+// teks chat: buang karakter kontrol, potong panjang (tampilan klien tetap pakai textContent)
+const cleanText = t => String(t ?? '').replace(/[\u0000-\u001f\u007f]/g, ' ').trim().slice(0, CHAT_MAX);
 
 const clamp1 = v => { v = Number(v); return Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0; };
 
@@ -35,8 +42,12 @@ export function createRaceServer() {
   }]));
   for (const id of CAR_IDS) race.addVehicle(id);
 
-  const send = (ws, m) => { if (ws && ws.readyState === 1) ws.send(JSON.stringify(m)); };
-  const broadcast = m => { const s = JSON.stringify(m); for (const ws of wss.clients) if (ws.readyState === 1) ws.send(s); };
+  const chatLog = [];
+  // statistik traffic (untuk monitor): pesan & byte per detik, per klien + total
+  const net = { inMsgs: 0, outMsgs: 0, outBytes: 0, inPerSec: 0, outPerSec: 0, kbOutPerSec: 0 };
+  const out = (ws, s) => { ws.send(s); ws.outMsgs++; net.outMsgs++; net.outBytes += s.length; };
+  const send = (ws, m) => { if (ws && ws.readyState === 1) out(ws, JSON.stringify(m)); };
+  const broadcast = m => { const s = JSON.stringify(m); for (const ws of wss.clients) if (ws.readyState === 1) out(ws, s); };
 
   function respawn() {
     CAR_IDS.forEach((id, i) => Object.assign(vehicles.get(id), ARENA.spawns[i], { speed: 0, input: { throttle: 0, steer: 0 } }));
@@ -44,21 +55,24 @@ export function createRaceServer() {
 
   wss.on('connection', ws => {
     ws.isAlive = true; ws.on('pong', () => { ws.isAlive = true; });
-    ws.info = { role: null, car: null };
-    send(ws, { type: 'welcome', protocolVersion: PROTOCOL_VERSION, arena: ARENA, rules: RULES, cars: CAR_IDS });
+    ws.info = { role: null, car: null, name: null };
+    Object.assign(ws, { inMsgs: 0, outMsgs: 0, inPerSec: 0, outPerSec: 0, rtt: null, lastChat: 0, lastHorn: 0 });
+    ws.on('pong', () => { if (ws.pingAt) ws.rtt = Date.now() - ws.pingAt; });
+    send(ws, { type: 'welcome', protocolVersion: PROTOCOL_VERSION, arena: ARENA, rules: RULES, cars: CAR_IDS, chat: chatLog });
 
     ws.on('message', raw => {
+      ws.inMsgs++; net.inMsgs++;
       let m; try { m = JSON.parse(raw); } catch { return; }
       const now = Date.now(), info = ws.info;
 
       if (m.type === 'join') {
         info.role = ['driver', 'spectator', 'device'].includes(m.role) ? m.role : 'spectator';
-        if (info.role === 'spectator') return;
+        if (info.role === 'spectator') { info.name = 'Layar'; return; }
         const v = vehicles.get(String(m.car));
         if (!v) { send(ws, { type: 'denied', reason: 'mobil tidak dikenal' }); info.role = null; return; }
         if (info.role === 'driver') {
           if (v.driverWs) { send(ws, { type: 'denied', car: v.id, driver: v.driver }); info.role = null; return; }
-          v.driverWs = ws; v.driver = String(m.name || 'Pemain').slice(0, 16);
+          v.driverWs = ws; v.driver = cleanText(m.name).slice(0, 16) || 'Pemain'; info.name = v.driver;
         } else {
           v.deviceWs = ws; v.kind = 'physical';
         }
@@ -69,6 +83,21 @@ export function createRaceServer() {
       const v = vehicles.get(info.car);
       if (m.type === 'input' && info.role === 'driver' && v?.driverWs === ws) {
         v.input = { throttle: clamp1(m.throttle), steer: clamp1(m.steer) }; v.lastInputAt = now;
+      } else if (m.type === 'skill' && info.role === 'driver' && v?.driverWs === ws) {
+        if (m.skill === 'horn') {
+          if (now - ws.lastHorn < HORN_GAP_MS) return;
+          ws.lastHorn = now; broadcast({ type: 'horn', vehicleId: v.id });
+        } else {
+          const ev = race.useSkill(v.id, String(m.skill), now);
+          if (ev) broadcast(ev);
+        }
+      } else if (m.type === 'chat' && (info.role === 'driver' || info.role === 'spectator')) {
+        const text = cleanText(m.text);
+        if (!text || now - ws.lastChat < CHAT_GAP_MS) return;
+        ws.lastChat = now;
+        const msg = { type: 'chat', from: info.name || 'Pemain', car: info.car, text, t: now };
+        chatLog.push(msg); if (chatLog.length > CHAT_HISTORY) chatLog.shift();
+        broadcast(msg);
       } else if (m.type === 'admin' && info.role === 'spectator') {
         if (m.action === 'start') { respawn(); race.start(now, CAR_IDS.filter(id => vehicles.get(id).driverWs || vehicles.get(id).deviceWs)); }
         if (m.action === 'reset') { respawn(); race.reset(); }
@@ -111,6 +140,23 @@ export function createRaceServer() {
     if (result) broadcast(result);
   }, 1000 / TICK_HZ);
 
+  // ---- statistik traffic tiap detik + ukur RTT (ping/pong) tiap 2 dtk ----
+  let pingTurn = false;
+  const stats = setInterval(() => {
+    net.inPerSec = net.inMsgs; net.outPerSec = net.outMsgs; net.kbOutPerSec = +(net.outBytes / 1024).toFixed(1);
+    net.inMsgs = net.outMsgs = net.outBytes = 0;
+    pingTurn = !pingTurn;
+    for (const ws of wss.clients) {
+      ws.inPerSec = ws.inMsgs; ws.outPerSec = ws.outMsgs; ws.inMsgs = ws.outMsgs = 0;
+      if (pingTurn && ws.readyState === 1) { ws.pingAt = Date.now(); ws.ping(); }
+    }
+  }, 1000);
+  const netSnapshot = () => ({
+    inPerSec: net.inPerSec, outPerSec: net.outPerSec, kbOutPerSec: net.kbOutPerSec,
+    clients: [...wss.clients].filter(ws => ws.info.role).map(ws => ({
+      role: ws.info.role, car: ws.info.car, name: ws.info.name, rtt: ws.rtt, inPerSec: ws.inPerSec, outPerSec: ws.outPerSec })),
+  });
+
   // ---- snapshot 20 Hz ----
   const snap = setInterval(() => {
     if (wss.clients.size === 0) return;
@@ -126,11 +172,13 @@ export function createRaceServer() {
           x: +v.x.toFixed(3), y: +v.y.toFixed(3), heading: +v.heading.toFixed(3), speed: +v.speed.toFixed(2),
           score: c.score || 0, lap: c.lap || 0, nextGate: c.nextGate ?? 1, finished: !!c.finished, place: c.place ?? null,
           powerUp: c.powerUp && c.powerUp.until > now ? { type: c.powerUp.type, remainMs: c.powerUp.until - now } : null,
+          inventory: c.inventory || {},
         };
       }),
       result: race.result,
+      net: netSnapshot(),
     });
   }, 1000 / SNAP_HZ);
 
-  return { wss, race, vehicles, close() { clearInterval(tick); clearInterval(snap); wss.close(); } };
+  return { wss, race, vehicles, close() { clearInterval(tick); clearInterval(snap); clearInterval(stats); wss.close(); } };
 }

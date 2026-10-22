@@ -26,15 +26,36 @@ test('gerbang harus berurutan; di luar urutan diabaikan', () => {
   assert.equal(r.cars.get('car1').nextGate, 2);
 });
 
+test('power-up masuk slot, aktif saat tombol skill ditekan', () => {
+  const r = racing();
+  assert.equal(r.useSkill('car1', 'boost', 4000), null);            // slot masih kosong
+  assert.equal(r.gatePassed('car1', 1, 4000).powerUp, 'boost');
+  assert.equal(r.capOf('car1', 4000), RULES.baseCap);                 // belum aktif
+  assert.equal(r.cars.get('car1').inventory.boost, 1);
+  assert.equal(r.useSkill('car1', 'boost', 4100).skill, 'boost');
+  assert.equal(r.capOf('car1', 4100), RULES.boostCap);
+  assert.equal(r.cars.get('car1').inventory.boost, 0);
+  assert.equal(r.useSkill('car1', 'boost', 4200), null);            // tidak bisa dipakai dua kali
+});
+
+test('mode auto: power-up langsung aktif (pilihan RULES.powerUpActivation)', () => {
+  const r = new Race(ARENA, { ...RULES, powerUpActivation: 'auto' });
+  r.start(0, ['car1']); r.tick(RULES.countdownMs);
+  r.gatePassed('car1', 1, 4000);
+  assert.equal(r.capOf('car1', 4000), RULES.boostCap);
+});
+
 test('lap +50, power-up aktif lalu habis', () => {
   const r = racing();
   const ev = r.gatePassed('car1', 1, 4000);
   assert.equal(ev.powerUp, 'boost');
+  r.useSkill('car1', 'boost', 4000);
   assert.equal(r.capOf('car1', 4000), RULES.boostCap);
   r.tick(4000 + RULES.powerUps.boost.durationMs);
   assert.equal(r.capOf('car1', 4000 + RULES.powerUps.boost.durationMs), RULES.baseCap);
   r.gatePassed('car1', 2, 5000);
   assert.equal(r.gatePassed('car1', 3, 5000).powerUp, 'shield');
+  r.useSkill('car1', 'shield', 5000);
   assert.equal(r.shieldOf('car1', 5001), true);
   const e0 = r.gatePassed('car1', 0, 6000);
   assert.equal(e0.lap, 1); assert.equal(e0.points, 10 + 50);
