@@ -11,7 +11,11 @@ ADR-0010 (power-up & skor; Cidi 2026-10-22: langsung dipakai, pemenang = skor te
 | Fisika | `shared/physics.js` | Model "bicycle", tabrakan dinding/rintangan/mobil, deteksi lintas gerbang |
 | Aturan balapan | `shared/race.js` | Urutan gerbang, lap, skor, power-up, pemenang (skor tertinggi; seri → finish lebih dulu) |
 | Room | `race-server.js` | Server authoritative: tick 30 Hz, snapshot 20 Hz, failsafe input basi 1 dtk |
-| Tampilan | `public/race3d.html` | Three.js: layar penonton (laptop) & mode setir POV (HP, `?drive`) |
+| Tampilan | `public/race3d.html` | Three.js: layar penonton (laptop) & mode setir (HP, `?drive`, `?drive&car=car1`) |
+| Dashboard | `public/monitor.html` | Input dari HP vs output ke mobil per RC, RTT, beban, diagnosis |
+
+> Arena 2D lama (`arena.html`, `controller.html`, `keyboard.html`, `car.html`) dan relay WebSocket `/`
+> dihapus 2026-10-22. Semua lewat `/race`.
 
 ## Dicocokkan dengan diagram konsep "Lapangan"
 | Konsep | Di sim | Catatan |
@@ -20,12 +24,13 @@ ADR-0010 (power-up & skor; Cidi 2026-10-22: langsung dipakai, pemenang = skor te
 | Router Wi-Fi di tengah | — | Hanya relevan di lapangan fisik |
 | Server | ✅ `race-server.js` | Server authoritative |
 | Client 1–3 via HP | ✅ `race3d.html?drive` | Satu pengemudi per mobil |
-| Traffic monitor via web | ✅ panel 📡 Traffic di layar laptop | Pesan masuk/keluar per detik, kB/s, RTT per klien |
+| Traffic monitor via web | ✅ panel 📡 Traffic di layar laptop + `monitor.html` | Pesan masuk/keluar, kB/s, RTT per klien, input→output per mobil |
 | Map overlay | ✅ peta mini kiri atas | Posisi semua mobil + gerbang berikutnya |
-| Status bar | ✅ atas | Fase, lap, gerbang berikutnya, skor & peringkat, kecepatan, power-up aktif |
-| Chat box | ✅ kanan | Maks 80 karakter, jeda 0,8 dtk, riwayat 20 pesan untuk yang baru masuk |
-| Joystick | ✅ satu joystick kiri bawah | Atas = gas, kiri/kanan = belok |
-| Skill buttons | ✅ ⚡ boost, 🛡️ shield, 📣 klakson | Power-up dari gerbang masuk slot, dipakai dengan tombol |
+| Status bar | ✅ HUD gaya arcade | Kiri atas: posisi besar, LAP, waktu, skor, gerbang berikutnya. Kanan atas: km/j besar + bar, power-up aktif |
+| Chat box | ✅ bar bawah (HP), panel kanan (laptop) | Maks 80 karakter, jeda 0,8 dtk, riwayat 20 pesan untuk yang baru masuk |
+| Kontrol | ✅ ◀ ▶ kiri bawah, GAS + REM kanan bawah | Multitouch: tiap jari dilacak sendiri; jari bisa digeser ◀↔▶ tanpa diangkat |
+| Skill buttons | ✅ ⚡ boost, 🛡️ shield, 📣 klakson di atas GAS | Power-up dari gerbang masuk slot, dipakai dengan tombol |
+| Pilih RC | ✅ QR per RC + tombol 🔄 Ganti RC | `join` ulang = pindah mobil, `leave` = lepas mobil |
 | (tambahan) POV semua pemain di laptop | ✅ kisi 2×2 (`?view=pov`) | Render ulang 3D, bukan video dari HP |
 
 ## Kenapa logika yang sama dipakai mobil fisik
@@ -43,14 +48,8 @@ Server lalu **tidak** menjalankan fisika untuk mobil itu, melainkan:
 
 Jadi skor, power-up, dan pemenang identik di dua dunia. Ini sudah diuji di `test/smoke.test.js`.
 
-## Protokol `/race` (versi 1)
-| Arah | Pesan |
-|---|---|
-| klien → server | `join {role:'driver'\|'spectator'\|'device', car, name}`, `input {throttle, steer, t}`, `skill {skill:'boost'\|'shield'\|'horn'}`, `chat {text}`, `admin {action:'start'\|'reset'}` |
-| server → klien | `welcome {arena, rules, chat}`, `joined`, `denied`, `snapshot` (20 Hz, termasuk `inventory` per mobil dan `net` = statistik traffic), `checkpointPassed`, `skillUsed`, `horn`, `chat`, `raceResult` |
-| server → device | `control {throttle, steer, cap}` (30 Hz, juga berfungsi sebagai heartbeat) |
-
-Input -1..1 (ADR-0007 krca memakai -100..100; konversi cukup di satu tempat saat digabung).
+## Protokol `/race`
+Lengkapnya di [03-PROTOCOL](03-PROTOCOL.md). Input -1..1 (ADR-0007 krca memakai -100..100; konversi cukup di satu tempat saat digabung).
 
 ## Batasan versi ini
 - **Satu room**, 3 mobil tetap. Siapa pun di layar penonton bisa Mulai/Reset (belum ada login).

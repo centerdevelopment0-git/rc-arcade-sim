@@ -1,45 +1,51 @@
-// bot.js — "HP palsu" otomatis untuk menguji beban & menggerakkan mobil.
+// bot.js — Pengemudi otomatis untuk balapan 3D (uji beban & mengisi RC yang kosong).
 //
-// Tiap bot = satu koneksi 'controller' ke server, mengendalikan satu mobil
-// (car1, car2, ...) dengan pola gerak buatan (setir & gas berosilasi).
-// Berguna untuk: simulasi banyak user, uji beban server, dan mengisi arena
-// tanpa perlu banyak HP sungguhan.
+// Tiap bot = satu koneksi 'driver' ke /race. Bot memilih RC yang masih kosong dan
+// menyetir menuju gerbang berikutnya (pakai data arena dari server).
 //
-// Pakai:  node bot.js [jumlah] [host]
-//   node bot.js 3                    -> 3 bot -> car1..car3, ke ws://localhost:3000
-//   node bot.js 5 ws://10.0.0.8:3000 -> 5 bot ke server lain
+// Pakai:  node bot.js [jumlah] [alamat]
+//   node bot.js 2                              -> 2 bot ke ws://localhost:3000/race
+//   node bot.js 1 wss://xxxx-3000.app.github.dev/race
 
 import { WebSocket } from 'ws';
 
-const COUNT = Math.max(1, parseInt(process.argv[2] || '3', 10));
-const HOST  = process.argv[3] || 'ws://localhost:3000';
-
-console.log(`\n🤖 Menjalankan ${COUNT} bot -> ${HOST}`);
-console.log('   Tiap bot mengendalikan car1..car%d. Ctrl+C untuk berhenti.\n', COUNT);
+const COUNT = Math.max(1, parseInt(process.argv[2] || '1', 10));
+const HOST  = process.argv[3] || 'ws://localhost:3000/race';
 
 function startBot(i) {
-  const car = 'car' + i;
-  const phase = Math.random() * Math.PI * 2;   // beda-beda tiap bot
-  let ws, timer, t0 = Date.now();
-
-  function connect() {
+  let ws, arena, myCar = null, timer, me = null;
+  const connect = () => {
     ws = new WebSocket(HOST);
+    ws.on('message', raw => {
+      const m = JSON.parse(raw);
+      if (m.type === 'welcome') arena = m.arena;
+      if (m.type === 'snapshot') {
+        if (!myCar) {
+          const free = m.vehicles.find(v => !v.driver && v.kind === 'sim');
+          if (free) { myCar = free.id; ws.send(JSON.stringify({ type:'join', role:'driver', car:myCar, name:'Bot' + i })); }
+        }
+        me = m.vehicles.find(v => v.id === myCar);
+      }
+      if (m.type === 'joined') console.log(`  ✓ Bot${i} menyetir ${m.car.toUpperCase()}`);
+      if (m.type === 'denied') myCar = null;
+    });
     ws.on('open', () => {
-      ws.send(JSON.stringify({ type:'hello', role:'controller', car, name:'Bot'+i }));
-      console.log(`  ✓ bot ${car} tersambung`);
-      // kirim perintah buatan 20x/detik
       timer = setInterval(() => {
-        if (ws.readyState !== 1) return;
-        const t = (Date.now() - t0) / 1000;
-        const steer    = Math.sin(t * 1.3 + phase);            // belok kiri-kanan halus
-        const throttle = 0.55 + 0.45 * Math.sin(t * 0.7 + phase); // gas naik-turun (selalu maju-ish)
-        ws.send(JSON.stringify({ type:'control', throttle:+throttle.toFixed(2), steer:+steer.toFixed(2), t:Date.now() }));
+        if (!me || !arena || ws.readyState !== 1) return;
+        // arahkan ke titik tengah gerbang berikutnya, sedikit menjauh dari rintangan tengah
+        const g = arena.gates[me.nextGate], tx = (g.x1 + g.x2) / 2, ty = (g.y1 + g.y2) / 2;
+        let diff = Math.atan2(ty - me.y, tx - me.x) - me.heading;
+        diff = Math.atan2(Math.sin(diff), Math.cos(diff));
+        const steer = Math.max(-1, Math.min(1, diff * 2));
+        ws.send(JSON.stringify({ type:'input', throttle: Math.abs(diff) > 1.2 ? 0.4 : 0.85, steer, t: Date.now() }));
+        if (me.inventory?.boost) ws.send(JSON.stringify({ type:'skill', skill:'boost' }));
       }, 50);
     });
-    ws.on('close', () => { clearInterval(timer); setTimeout(connect, 1000); });
+    ws.on('close', () => { clearInterval(timer); myCar = null; setTimeout(connect, 1000); });
     ws.on('error', () => {});
-  }
+  };
   connect();
 }
 
+console.log(`\n🤖 ${COUNT} bot -> ${HOST}  (Ctrl+C untuk berhenti)\n`);
 for (let i = 1; i <= COUNT; i++) startBot(i);
