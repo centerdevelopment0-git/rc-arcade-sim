@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Balapan 3D — RC Arcade Sim</title>
+<style>
+  :root { --bg:#0f1115; --panel:rgba(20,23,30,.82); --edge:#2a2e37; --text:#e8eaed; --muted:#9aa0b0;
+          --ok:#2ee98b; --accent:#3f84d6; --warn:#ffb454; }
+  * { box-sizing:border-box; -webkit-user-select:none; user-select:none; }
+  html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; }
+  canvas#view { position:fixed; inset:0; width:100vw; height:100dvh; display:block; touch-action:none; }
+  .hud { position:fixed; background:var(--panel); border:1px solid var(--edge); border-radius:12px; padding:8px 12px; font-size:13px; }
+  .hud b { color:#fff; }
+  #stats { top:10px; left:10px; line-height:1.5; }
+  #board { top:10px; right:10px; min-width:220px; }
+  #board table { border-collapse:collapse; width:100%; }
+  #board td { padding:3px 6px; border-top:1px solid #20242e; }
+  #board .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; }
+  #admin { bottom:10px; left:10px; display:flex; gap:8px; align-items:center; }
+  #join { bottom:10px; right:10px; display:flex; gap:12px; align-items:center; }
+  #join #qr { width:120px; background:#fff; border-radius:8px; line-height:0; }
+  #join code { display:block; font-size:11px; color:#8ab4ff; word-break:break-all; max-width:220px; margin-top:4px; }
+  button { background:#20242e; color:#fff; border:1px solid var(--edge); border-radius:9px; padding:8px 14px; font-size:14px; cursor:pointer; }
+  button.primary { background:var(--accent); border-color:var(--accent); }
+  #center { position:fixed; left:50%; top:38%; transform:translate(-50%,-50%); font-size:64px; font-weight:800;
+            text-shadow:0 4px 18px rgba(0,0,0,.6); pointer-events:none; text-align:center; }
+  #toast { position:fixed; left:50%; top:16%; transform:translateX(-50%); font-size:22px; font-weight:700; color:var(--ok);
+           text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; opacity:0; transition:opacity .25s; }
+  /* pemilih mobil (mode setir) */
+  #pick { position:fixed; inset:0; display:grid; place-items:center; background:rgba(10,12,16,.9); }
+  #pick .card { background:#1a1d24; border:1px solid var(--edge); border-radius:14px; padding:22px; width:min(92vw,380px); }
+  #pick h2 { margin:0 0 10px; font-size:18px; }
+  #pick .cars { display:flex; gap:10px; margin:12px 0; }
+  #pick .cars button { flex:1; padding:14px 0; font-size:16px; font-weight:700; }
+  #pick .cars button:disabled { opacity:.35; }
+  #pick input { width:100%; background:#20242e; color:#fff; border:1px solid var(--edge); border-radius:8px; padding:9px; font-size:15px; }
+  #pick small { color:var(--muted); display:block; margin-top:10px; line-height:1.4; }
+  /* kontrol sentuh */
+  .pad { position:fixed; bottom:12px; height:42dvh; border:2px solid rgba(255,255,255,.12); border-radius:18px;
+         background:rgba(255,255,255,.04); touch-action:none; }
+  #steerPad { left:12px; width:40vw; }
+  #thrPad { right:12px; width:22vw; }
+  .knob { position:absolute; width:64px; height:64px; border-radius:50%; background:rgba(63,132,214,.85);
+          left:50%; top:50%; transform:translate(-50%,-50%); pointer-events:none; }
+  #thrPad .knob { background:rgba(43,138,78,.9); }
+  .padlabel { position:absolute; top:6px; width:100%; text-align:center; font-size:11px; color:var(--muted); pointer-events:none; }
+  #camBtn { position:fixed; top:10px; right:10px; }
+  .hidden { display:none !important; }
+</style>
+</head>
+<body>
+<canvas id="view"></canvas>
+
+<div id="stats" class="hud">menyambung…</div>
+<div id="board" class="hud hidden"></div>
+<div id="admin" class="hud hidden">
+  <button class="primary" id="startBtn">▶ Mulai balapan</button>
+  <button id="resetBtn">↺ Reset</button>
+  <span id="adminInfo" style="color:var(--muted)"></span>
+</div>
+<div id="join" class="hud hidden">
+  <div id="qr"></div>
+  <div><b>📱 Scan untuk menyetir</b><br><span style="color:var(--muted)">HP landscape, pilih RC1–RC3</span><code id="joinUrl"></code></div>
+</div>
+<div id="center"></div>
+<div id="toast"></div>
+<button id="camBtn" class="hidden">🎥 POV</button>
+
+<div id="pick" class="hidden"><div class="card">
+  <h2>🏎️ Pilih mobil</h2>
+  <input id="pname" maxlength="16" placeholder="Nama kamu">
+  <div class="cars" id="cars"></div>
+  <small>Kiri bawah: belok. Kanan bawah: gas (atas maju, bawah mundur).<br>
+    Laptop: W/S gas, A/D belok. Lewati gerbang <b>berurutan</b>; ⚡ boost & 🛡️ shield di gerbang tertentu. Pemenang = <b>skor tertinggi</b>.</small>
+</div></div>
+
+<div id="steerPad" class="pad hidden"><div class="padlabel">◀ BELOK ▶</div><div class="knob"></div></div>
+<div id="thrPad" class="pad hidden"><div class="padlabel">▲ GAS ▼</div><div class="knob"></div></div>
+
+<script src="/vendor/qrcode.js"></script>
+<script type="importmap">{ "imports": { "three": "/vendor/three/three.module.min.js" } }</script>
+<script type="module">
+import * as THREE from 'three';
+
+const params = new URLSearchParams(location.search);
+const DRIVE = params.has('drive');           // tanpa ?drive = layar penonton (laptop)
+const COLORS = { car1:'#3f84d6', car2:'#2ee98b', car3:'#ff8a3d' };
+const $ = id => document.getElementById(id);
+
+// ---------------- koneksi ----------------
+let ws, arena = null, rules = null, myCar = null, myName = '';
+const snaps = [];                             // buffer snapshot untuk interpolasi
+let last = null, offset = 0;                  // offset = jam server - jam lokal (perkiraan)
+function connect() {
+  ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/race`);
+  ws.onopen = () => {
+    if (!DRIVE) ws.send(JSON.stringify({ type:'join', role:'spectator' }));
+    else if (myCar) ws.send(JSON.stringify({ type:'join', role:'driver', car:myCar, name:myName }));
+  };
+  ws.onclose = () => { $('stats').textContent = 'putus — menyambung ulang…'; setTimeout(connect, 1000); };
+  ws.onmessage = e => {
+    const m = JSON.parse(e.data);
+    if (m.type === 'welcome') { if (!arena) { arena = m.arena; rules = m.rules; buildArena(); } }
+    else if (m.type === 'snapshot') {
+      offset = m.t - Date.now(); last = m; snaps.push(m); if (snaps.length > 30) snaps.shift();
+      if (DRIVE && !myCar) renderPicker(m);
+    }
+    else if (m.type === 'denied') { myCar = null; $('pick').classList.remove('hidden'); toast((m.car||'').toUpperCase()+' sedang dipakai '+(m.driver||'orang lain'), '#ff6b6b'); }
+    else if (m.type === 'joined') { $('pick').classList.add('hidden'); showDriveUI(true); }
+    else if (m.type === 'checkpointPassed') onCheckpoint(m);
+  };
+}
+connect();
+
+// ---------------- three.js: scene ----------------
+const canvas = $('view');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias:true });
+renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+renderer.shadowMap.enabled = true;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#8fb7e0');
+scene.fog = new THREE.Fog('#8fb7e0', 14, 34);
+scene.add(new THREE.HemisphereLight('#ffffff', '#445', 1.6));
+const sun = new THREE.DirectionalLight('#ffffff', 2.2);
+sun.position.set(4, 10, 3); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left:-8, right:8, top:8, bottom:-8 }); sun.shadow.mapSize.set(1024, 1024);
+scene.add(sun);
+const camera = new THREE.PerspectiveCamera(70, 1, 0.03, 100);
+
+// koordinat sim (x,y) -> three (x, tinggi, y)
+const gateMeshes = [], cars = new Map();
+function buildArena() {
+  const W = arena.width, H = arena.height;
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshStandardMaterial({ color:'#3a3f4a', roughness:.95 }));
+  floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+  const grid = new THREE.GridHelper(Math.max(W, H), Math.max(W, H) * 2, '#555c6b', '#474d5a');
+  grid.position.y = 0.002; scene.add(grid);
+  const outside = new THREE.Mesh(new THREE.PlaneGeometry(80, 80), new THREE.MeshStandardMaterial({ color:'#5d7a4a' }));
+  outside.rotation.x = -Math.PI / 2; outside.position.y = -0.01; scene.add(outside);
+  // dinding
+  const wallMat = new THREE.MeshStandardMaterial({ color:'#d9dde5' });
+  for (const [w, d, x, z] of [[W+.2,.1,0,-H/2-.05],[W+.2,.1,0,H/2+.05],[.1,H,-W/2-.05,0],[.1,H,W/2+.05,0]]) {
+    const m = new THREE.Mesh(new THREE.BoxGeometry(w, .25, d), wallMat); m.position.set(x, .125, z); m.castShadow = true; scene.add(m);
+  }
+  // rintangan
+  for (const o of arena.obstacles) {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(o.r, o.r, .35, 32), new THREE.MeshStandardMaterial({ color:'#c0563a' }));
+    m.position.set(o.x, .175, o.y); m.castShadow = true; scene.add(m);
+  }
+  // gerbang: 2 tiang + palang atas (+ ikon power-up melayang)
+  arena.gates.forEach((g, i) => {
+    const grp = new THREE.Group(), mat = new THREE.MeshStandardMaterial({ color:'#888', emissive:'#000' });
+    const len = Math.hypot(g.x2 - g.x1, g.y2 - g.y1);
+    for (const [x, y] of [[g.x1, g.y1], [g.x2, g.y2]]) {
+      const post = new THREE.Mesh(new THREE.BoxGeometry(.06, .7, .06), mat); post.position.set(x, .35, y); grp.add(post);
+    }
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(len, .08, .06), mat);
+    bar.position.set((g.x1 + g.x2) / 2, .7, (g.y1 + g.y2) / 2);
+    bar.rotation.y = -Math.atan2(g.y2 - g.y1, g.x2 - g.x1); grp.add(bar);
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(len, .06), new THREE.MeshBasicMaterial({ color: i === 0 ? '#fff' : '#aaa' }));
+    line.rotation.x = -Math.PI / 2; line.rotation.z = -Math.atan2(g.y2 - g.y1, g.x2 - g.x1);
+    line.position.set((g.x1 + g.x2) / 2, .004, (g.y1 + g.y2) / 2); grp.add(line);
+    let icon = null;
+    if (g.powerUp) {
+      icon = new THREE.Mesh(new THREE.OctahedronGeometry(.14), new THREE.MeshStandardMaterial({
+        color: g.powerUp === 'boost' ? '#ffb020' : '#4fc3ff', emissive: g.powerUp === 'boost' ? '#7a4a00' : '#0d4a6a' }));
+      icon.position.set((g.x1 + g.x2) / 2, .45, (g.y1 + g.y2) / 2); grp.add(icon);
+    }
+    scene.add(grp); gateMeshes.push({ mat, icon });
+  });
+}
+
+function makeCar(id) {
+  const grp = new THREE.Group(), col = COLORS[id] || '#ccc';
+  const body = new THREE.Mesh(new THREE.BoxGeometry(.42, .08, .22), new THREE.MeshStandardMaterial({ color: col, roughness:.4 }));
+  body.position.y = .08; body.castShadow = true; grp.add(body);
+  const cab = new THREE.Mesh(new THREE.BoxGeometry(.16, .06, .16), new THREE.MeshStandardMaterial({ color:'#111' }));
+  cab.position.set(-.03, .15, 0); grp.add(cab);
+  const wheelGeo = new THREE.CylinderGeometry(.045, .045, .04, 16), wheelMat = new THREE.MeshStandardMaterial({ color:'#111' });
+  for (const [x, z] of [[.13,.12],[.13,-.12],[-.13,.12],[-.13,-.12]]) {
+    const w = new THREE.Mesh(wheelGeo, wheelMat); w.rotation.x = Math.PI / 2; w.position.set(x, .045, z); grp.add(w);
+  }
+  const aura = new THREE.Mesh(new THREE.SphereGeometry(.32, 16, 12), new THREE.MeshBasicMaterial({ color:'#4fc3ff', transparent:true, opacity:.22 }));
+  aura.position.y = .1; aura.visible = false; grp.add(aura);
+  scene.add(grp);
+  const c = { grp, aura }; cars.set(id, c); return c;
+}
+
+// ---------------- interpolasi ----------------
+const INTERP_MS = 100;
+function lerpAngle(a, b, t) { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return a + d * t; }
+function vehicleAt(id, renderT) {
+  let a = null, b = null;
+  for (let i = snaps.length - 1; i >= 0; i--) if (snaps[i].t <= renderT) { a = snaps[i]; b = snaps[i + 1] || a; break; }
+  if (!a) a = b = snaps[0];
+  const va = a.vehicles.find(v => v.id === id), vb = b.vehicles.find(v => v.id === id) || va;
+  const t = b.t > a.t ? Math.min(1, (renderT - a.t) / (b.t - a.t)) : 0;
+  return { x: va.x + (vb.x - va.x) * t, y: va.y + (vb.y - va.y) * t, heading: lerpAngle(va.heading, vb.heading, t) };
+}
+
+// ---------------- kamera ----------------
+let camMode = DRIVE ? 'pov' : 'top';
+$('camBtn').onclick = () => { camMode = camMode === 'pov' ? 'chase' : 'pov'; $('camBtn').textContent = camMode === 'pov' ? '🎥 POV' : '🎥 Chase'; };
+function placeCamera(me) {
+  if (camMode === 'top' || !me) {
+    camera.fov = 50; camera.position.set(0, arena ? arena.height * 1.15 : 9, arena ? arena.height * .95 : 7); camera.lookAt(0, 0, .3);
+  } else {
+    const fx = Math.cos(me.heading), fy = Math.sin(me.heading);
+    if (camMode === 'pov') {   // kamera "di kap mobil", seperti kamera RC fisik nanti (ADR-0011)
+      camera.fov = 75; camera.position.set(me.x + fx * .12, .16, me.y + fy * .12);
+      camera.lookAt(me.x + fx * 3, .1, me.y + fy * 3);
+    } else {
+      camera.fov = 65; camera.position.set(me.x - fx * .9, .5, me.y - fy * .9);
+      camera.lookAt(me.x + fx * .8, .05, me.y + fy * .8);
+    }
+  }
+  camera.updateProjectionMatrix();
+}
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+// ---------------- loop render ----------------
+function frame() {
+  requestAnimationFrame(frame);
+  if (!last || !arena) { renderer.render(scene, camera); return; }
+  const nowServer = Date.now() + offset, renderT = nowServer - INTERP_MS;
+  let me = null;
+  for (const v of last.vehicles) {
+    const c = cars.get(v.id) || makeCar(v.id);
+    let p;
+    if (v.id === myCar) {
+      // mobil sendiri: ekstrapolasi dari snapshot terbaru (lebih responsif untuk POV)
+      const dt = Math.min(.15, (nowServer - last.t) / 1000);
+      p = { x: v.x + Math.cos(v.heading) * v.speed * dt, y: v.y + Math.sin(v.heading) * v.speed * dt, heading: v.heading };
+      me = p;
+    } else p = vehicleAt(v.id, renderT);
+    c.grp.position.set(p.x, 0, p.y); c.grp.rotation.y = -p.heading;
+    c.grp.visible = !(v.id === myCar && camMode === 'pov');
+    c.aura.visible = v.powerUp?.type === 'shield';
+  }
+  // sorot gerbang berikutnya milik mobil sendiri (atau semua abu-abu untuk penonton)
+  const mine = last.vehicles.find(v => v.id === myCar);
+  gateMeshes.forEach((g, i) => {
+    const next = mine && last.phase === 'racing' && !mine.finished && mine.nextGate === i;
+    g.mat.color.set(next ? '#2ee98b' : (i === 0 ? '#f2f2f2' : '#9aa0b0'));
+    g.mat.emissive.set(next ? '#0b5a33' : '#000');
+    if (g.icon) g.icon.rotation.y += .03;
+  });
+  placeCamera(me);
+  renderer.render(scene, camera);
+  updateHUD(mine);
+}
+requestAnimationFrame(frame);
+
+// ---------------- HUD ----------------
+const PHASE = { lobby:'Latihan bebas', countdown:'Bersiap…', racing:'BALAPAN', finished:'Selesai' };
+const fmt = ms => (ms / 1000).toFixed(1) + ' dtk';
+function updateHUD(mine) {
+  const s = last;
+  if (DRIVE && mine) {
+    const pu = mine.powerUp ? `<br>${rules.powerUps[mine.powerUp.type].icon} <b>${rules.powerUps[mine.powerUp.type].label}</b> ${fmt(mine.powerUp.remainMs)}` : '';
+    $('stats').innerHTML = `<b style="color:${COLORS[myCar]}">${myCar.toUpperCase()}</b> · ${PHASE[s.phase]}<br>
+      Lap <b>${Math.min(mine.lap + 1, arena.laps)}/${arena.laps}</b> · Gerbang <b>${arena.gates[mine.nextGate].label}</b><br>
+      Skor <b>${mine.score}</b> · ${(Math.abs(mine.speed) * 3.6).toFixed(1)} km/j${pu}`;
+  } else if (!DRIVE) {
+    $('stats').innerHTML = `<b>🏁 Balapan 3D</b> · ${PHASE[s.phase]}${s.phase === 'racing' ? ' · ' + fmt(s.raceMs) : ''}`;
+    const rows = [...s.vehicles].sort((a, b) => b.score - a.score || (a.place ?? 99) - (b.place ?? 99)).map(v => `<tr>
+      <td><span class="sw" style="background:${COLORS[v.id]}"></span>${v.id.toUpperCase()}${v.kind === 'physical' ? ' 🔌' : ''}</td>
+      <td>${v.driver ? v.driver : '<span style="color:var(--muted)">kosong</span>'}</td>
+      <td>${v.finished ? '🏁' : 'L' + Math.min(v.lap + 1, arena.laps)}</td><td><b>${v.score}</b></td>
+      <td>${v.powerUp ? rules.powerUps[v.powerUp.type].icon : ''}</td></tr>`).join('');
+    $('board').innerHTML = `<table><tr style="color:var(--muted)"><td>Mobil</td><td>Pemain</td><td>Lap</td><td>Skor</td><td></td></tr>${rows}</table>`;
+    const drivers = s.vehicles.filter(v => v.driver || v.kind === 'physical').length;
+    $('adminInfo').textContent = drivers ? `${drivers} mobil siap` : 'belum ada pemain';
+  }
+  let center = '';
+  if (s.phase === 'countdown') center = Math.ceil(s.countdownMs / 1000);
+  else if (s.phase === 'racing' && s.raceMs < 800) center = 'GO!';
+  else if (s.phase === 'finished' && s.result) {
+    const w = s.result.standings[0];
+    center = `<div style="font-size:40px">🏆 ${w.vehicleId.toUpperCase()} menang · skor tertinggi</div>` +
+      s.result.standings.map(r => `<div style="font-size:18px;font-weight:600">${r.position}. ${r.vehicleId.toUpperCase()} — ${r.score} poin${r.finished ? ' · ' + fmt(r.finishMs) : ''}</div>`).join('');
+  }
+  if ($('center').dataset.v !== String(center)) { $('center').innerHTML = center; $('center').dataset.v = String(center); }
+}
+
+let toastTimer;
+function toast(text, color = '#2ee98b') {
+  const t = $('toast'); t.textContent = text; t.style.color = color; t.style.opacity = 1;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.opacity = 0, 1400);
+}
+function onCheckpoint(m) {
+  if (DRIVE && m.vehicleId !== myCar) return;
+  const pu = m.powerUp ? ` ${rules.powerUps[m.powerUp].icon} ${rules.powerUps[m.powerUp].label}!` : '';
+  const who = DRIVE ? '' : m.vehicleId.toUpperCase() + ' ';
+  toast(m.finished ? `${who}FINISH #${m.place} +${m.points}` : `${who}+${m.points}${pu}`);
+}
+
+// ---------------- mode penonton (laptop) ----------------
+if (!DRIVE) {
+  for (const id of ['stats', 'board', 'admin', 'join']) $(id).classList.remove('hidden');
+  const send = action => ws.readyState === 1 && ws.send(JSON.stringify({ type:'admin', action }));
+  $('startBtn').onclick = () => send('start');
+  $('resetBtn').onclick = () => send('reset');
+  (async () => {
+    let base = location.origin;
+    if (['localhost', '127.0.0.1'].includes(location.hostname)) {
+      try { const h = await (await fetch('/healthz')).json(); if (h.lan && h.lan[0]) base = h.lan[0]; } catch {}
+    }
+    const url = base + '/race3d.html?drive';
+    $('joinUrl').textContent = url;
+    if (typeof qrcode !== 'undefined') { const q = qrcode(0, 'M'); q.addData(url); q.make(); $('qr').innerHTML = q.createSvgTag({ cellSize:4, margin:2, scalable:true }); }
+  })();
+}
+
+// ---------------- mode setir (HP / laptop) ----------------
+let throttle = 0, steer = 0;
+const keys = new Set();
+if (DRIVE) {
+  $('pick').classList.remove('hidden');
+  try { $('pname').value = localStorage.getItem('rc_name') || ''; } catch {}
+}
+function renderPicker(s) {
+  const el = $('cars'); if (el.dataset.v === JSON.stringify(s.vehicles.map(v => v.driver))) return;
+  el.dataset.v = JSON.stringify(s.vehicles.map(v => v.driver));
+  el.innerHTML = s.vehicles.map(v => `<button data-car="${v.id}" ${v.driver ? 'disabled' : ''}
+    style="border-color:${COLORS[v.id]}">${v.id.toUpperCase().replace('CAR', 'RC')}<br><small style="margin:0;font-weight:400">${v.driver || 'kosong'}</small></button>`).join('');
+}
+$('cars').addEventListener('click', e => {
+  const b = e.target.closest('button[data-car]'); if (!b || b.disabled) return;
+  myName = $('pname').value.trim() || 'Pemain'; try { localStorage.setItem('rc_name', myName); } catch {}
+  myCar = b.dataset.car;
+  ws.send(JSON.stringify({ type:'join', role:'driver', car:myCar, name:myName }));
+});
+function showDriveUI(on) {
+  const touch = matchMedia('(pointer:coarse)').matches;
+  $('camBtn').classList.toggle('hidden', !on);
+  for (const id of ['steerPad', 'thrPad']) $(id).classList.toggle('hidden', !(on && touch));
+}
+setInterval(() => {
+  if (!DRIVE || !myCar || !ws || ws.readyState !== 1) return;
+  let t = throttle, s = steer;
+  if (keys.size) { t = (keys.has('up') ? 1 : 0) - (keys.has('down') ? 1 : 0); s = (keys.has('right') ? 1 : 0) - (keys.has('left') ? 1 : 0); }
+  ws.send(JSON.stringify({ type:'input', throttle:t, steer:s, t:Date.now() }));
+}, 50);
+
+const KEYMAP = { w:'up', arrowup:'up', s:'down', arrowdown:'down', a:'left', arrowleft:'left', d:'right', arrowright:'right' };
+addEventListener('keydown', e => { const k = KEYMAP[e.key.toLowerCase()]; if (k && DRIVE && myCar) { e.preventDefault(); keys.add(k); } });
+addEventListener('keyup', e => { const k = KEYMAP[e.key.toLowerCase()]; if (k) keys.delete(k); });
+addEventListener('blur', () => keys.clear());
+
+function makePad(pad, axis, onValue) {
+  const knob = pad.querySelector('.knob'); let pid = null;
+  const update = e => {
+    const r = pad.getBoundingClientRect();
+    const v = axis === 'x' ? Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width) * 2 - 1))
+                           : Math.max(-1, Math.min(1, -(((e.clientY - r.top) / r.height) * 2 - 1)));
+    if (axis === 'x') knob.style.left = (50 + v * 40) + '%'; else knob.style.top = (50 - v * 40) + '%';
+    onValue(+v.toFixed(2));
+  };
+  const end = e => { if (e.pointerId !== pid) return; pid = null; knob.style.left = knob.style.top = '50%'; onValue(0); };
+  pad.addEventListener('pointerdown', e => { pid = e.pointerId; pad.setPointerCapture(pid); update(e); });
+  pad.addEventListener('pointermove', e => { if (e.pointerId === pid) update(e); });
+  pad.addEventListener('pointerup', end); pad.addEventListener('pointercancel', end);
+}
+makePad($('steerPad'), 'x', v => steer = v);
+makePad($('thrPad'), 'y', v => throttle = v);
+</script>
+</body>
+</html>

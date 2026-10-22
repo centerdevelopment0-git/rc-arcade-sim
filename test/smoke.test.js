@@ -84,3 +84,52 @@ test('monitor menerima statistik', async () => {
   assert.ok(s.clients.monitors >= 1);
   mon.ws.close();
 });
+
+test('balapan 3D: penonton mulai, pengemudi bergerak, kursi kedua ditolak', async () => {
+  const open = () => new Promise((res, rej) => { const ws = new WebSocket(WS + '/race'), msgs = [];
+    ws.on('message', d => msgs.push(JSON.parse(d))); ws.on('open', () => res({ ws, msgs })); ws.on('error', rej); });
+  const send = (c, m) => c.ws.send(JSON.stringify(m));
+  const tv = await open(), hp = await open(), hp2 = await open();
+  const welcome = await waitFor(tv.msgs, m => m.type === 'welcome');
+  assert.equal(welcome.arena.gates.length, 4);
+  send(tv, { type:'join', role:'spectator' });
+  send(hp, { type:'join', role:'driver', car:'car1', name:'HP1' });
+  await waitFor(hp.msgs, m => m.type === 'joined');
+  send(hp2, { type:'join', role:'driver', car:'car1', name:'HP2' });
+  assert.equal((await waitFor(hp2.msgs, m => m.type === 'denied')).driver, 'HP1');
+
+  send(tv, { type:'admin', action:'start' });
+  await waitFor(tv.msgs, m => m.type === 'snapshot' && m.phase === 'countdown');
+  const timer = setInterval(() => send(hp, { type:'input', throttle:1, steer:0, t:Date.now() }), 50);
+  try {
+    const s = await waitFor(tv.msgs, m => m.type === 'snapshot' && m.phase === 'racing' && m.vehicles[0].x > 1.5, 6000);
+    assert.equal(s.vehicles[0].driver, 'HP1');
+  } finally { clearInterval(timer); }
+  tv.ws.close(); hp.ws.close(); hp2.ws.close();
+});
+
+test('balapan 3D: mobil fisik (device) dapat perintah ber-cap dan gerbang dari QR dihitung', async () => {
+  const open = () => new Promise((res, rej) => { const ws = new WebSocket(WS + '/race'), msgs = [];
+    ws.on('message', d => msgs.push(JSON.parse(d))); ws.on('open', () => res({ ws, msgs })); ws.on('error', rej); });
+  const send = (c, m) => c.ws.send(JSON.stringify(m));
+  const dev = await open(), hp = await open(), tv = await open();
+  send(dev, { type:'join', role:'device', car:'car3' });
+  send(hp, { type:'join', role:'driver', car:'car3', name:'Fisik' });
+  send(tv, { type:'join', role:'spectator' });
+  await waitFor(hp.msgs, m => m.type === 'joined');
+  send(tv, { type:'admin', action:'start' });
+  await waitFor(tv.msgs, m => m.type === 'snapshot' && m.phase === 'racing', 5000);
+  const timer = setInterval(() => send(hp, { type:'input', throttle:1, steer:0, t:Date.now() }), 50);
+  try {
+    const c = await waitFor(dev.msgs, m => m.type === 'control' && m.throttle > 0, 2000);
+    assert.equal(c.throttle, 0.8);                 // batas throttle normal 80%
+    send(dev, { type:'checkpointSeen', gate:1 });  // gerbang G1 (boost) terbaca dari QR
+    const ev = await waitFor(tv.msgs, m => m.type === 'checkpointPassed' && m.vehicleId === 'car3');
+    assert.equal(ev.powerUp, 'boost');
+    dev.msgs.length = 0;
+    const c2 = await waitFor(dev.msgs, m => m.type === 'control' && m.throttle > 0.9, 2000);
+    assert.equal(c2.cap, 1);                       // boost: 100%
+  } finally { clearInterval(timer); }
+  send(tv, { type:'admin', action:'reset' });
+  dev.ws.close(); hp.ws.close(); tv.ws.close();
+});

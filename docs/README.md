@@ -14,6 +14,7 @@ Baca sesuai kebutuhan — tiap dokumen berdiri sendiri.
 | 05 | [ROADMAP.md](05-ROADMAP.md) | **Tahapan** — dari simulasi cloud → RC car fisik, milestone per fase | Perencanaan |
 | 06 | [BACKLOG.md](06-BACKLOG.md) | **Daftar fitur** — centang fitur yang mau kamu ambil / buang (kustomisasi di sini) | Kamu |
 | 07 | [TEST-PLAN.md](07-TEST-PLAN.md) | **Rencana uji** — cara mastiin tiap bagian beneran jalan | QA / kamu |
+| 08 | [SIM-3D.md](08-SIM-3D.md) | **Balapan 3D** — arena 3D, POV, skor/power-up, cara mobil fisik memakai logika yang sama | Dev / kamu |
 
 ## Cara pakai dokumen ini untuk kustomisasi
 1. Buka **01-PRD** → ini gambaran besar fitur & tujuannya.
