@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Dijalankan tiap Codespace menyala: start server di latar belakang,
+# Dijalankan tiap Codespace menyala: ambil kode terbaru dari GitHub + start server,
 # lalu jadikan port 3000 publik (HP bisa buka tanpa login GitHub).
-nohup setsid npm start > /tmp/rc-server.log 2>&1 &
+bash "$(dirname "$0")/update.sh"
 
 if [ -n "$CODESPACE_NAME" ]; then
   for i in $(seq 1 30); do

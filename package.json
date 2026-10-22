@@ -6,6 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "bot": "node bot.js",
+    "update": "bash .devcontainer/update.sh",
     "test": "node --test test/*.test.js"
   },
   "dependencies": {
