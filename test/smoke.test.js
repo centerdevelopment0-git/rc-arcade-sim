@@ -126,10 +126,35 @@ test('balapan 3D: mobil fisik (device) dapat perintah ber-cap dan gerbang dari Q
     send(dev, { type:'checkpointSeen', gate:1 });  // gerbang G1 (boost) terbaca dari QR
     const ev = await waitFor(tv.msgs, m => m.type === 'checkpointPassed' && m.vehicleId === 'car3');
     assert.equal(ev.powerUp, 'boost');
+    send(hp, { type:'skill', skill:'boost' });     // pemain menekan tombol skill di HP
+    await waitFor(tv.msgs, m => m.type === 'skillUsed' && m.vehicleId === 'car3');
     dev.msgs.length = 0;
     const c2 = await waitFor(dev.msgs, m => m.type === 'control' && m.throttle > 0.9, 2000);
     assert.equal(c2.cap, 1);                       // boost: 100%
   } finally { clearInterval(timer); }
   send(tv, { type:'admin', action:'reset' });
   dev.ws.close(); hp.ws.close(); tv.ws.close();
+});
+
+test('balapan 3D: chat, klakson, dan statistik traffic', async () => {
+  const open = () => new Promise((res, rej) => { const ws = new WebSocket(WS + '/race'), msgs = [];
+    ws.on('message', d => msgs.push(JSON.parse(d))); ws.on('open', () => res({ ws, msgs })); ws.on('error', rej); });
+  const send = (c, m) => c.ws.send(JSON.stringify(m));
+  const hp = await open(), tv = await open();
+  send(tv, { type:'join', role:'spectator' });
+  send(hp, { type:'join', role:'driver', car:'car2', name:'Chatter' });
+  await waitFor(hp.msgs, m => m.type === 'joined');
+  send(hp, { type:'chat', text:'  halo\u0007 <b>semua</b>  ' + 'x'.repeat(200) });
+  const c = await waitFor(tv.msgs, m => m.type === 'chat');
+  assert.equal(c.from, 'Chatter'); assert.equal(c.car, 'car2');
+  assert.ok(c.text.startsWith('halo  <b>semua</b>'));   // karakter kontrol dibuang, HTML di-escape di klien
+  assert.ok(c.text.length <= 80);
+  send(hp, { type:'skill', skill:'horn' });
+  assert.equal((await waitFor(tv.msgs, m => m.type === 'horn')).vehicleId, 'car2');
+  const s = await waitFor(tv.msgs, m => m.type === 'snapshot' && m.net && m.net.clients.some(x => x.name === 'Chatter'), 3000);
+  assert.ok(s.net.outPerSec >= 0);
+  // riwayat chat dikirim ke klien baru
+  const late = await open();
+  assert.ok((await waitFor(late.msgs, m => m.type === 'welcome')).chat.some(m => m.from === 'Chatter'));
+  hp.ws.close(); tv.ws.close(); late.ws.close();
 });

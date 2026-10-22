@@ -56,12 +56,16 @@ laptop kantor, laptop rumah, atau HP pakai data seluler. Tidak perlu install apa
 Arena 3D skala RC sungguhan (12 × 8 m, 3 mobil = 3 mobil fisik pilot). Tiap HP melihat
 dari **kamera POV di kap mobil**, persis seperti kamera mobil fisik nanti.
 
-1. Laptop: buka halaman depan → **Balapan 3D** (layar penonton + papan skor + QR).
+1. Laptop: buka halaman depan → **Balapan 3D** (arena dari atas, papan skor, traffic monitor, chat, QR).
+   Tombol **🎥 Lihat POV 3 pemain** = kisi 2×2: arena + kamera POV RC1, RC2, RC3 sekaligus
+   (langsung: `…/race3d.html?view=pov`).
 2. HP 1 & HP 2 (landscape): scan QR → isi nama → pilih RC1/RC2. Mobil ke-3 bisa
-   disetir dari tab laptop lain: `…/race3d.html?drive` (W/S gas, A/D belok).
-3. Sebelum mulai = latihan bebas. Klik **▶ Mulai balapan** di laptop → hitung mundur → 2 lap.
-4. Lewati gerbang berurutan (gerbang berikutnya **hijau** di layar HP): +10 per gerbang,
-   +50 per lap, bonus finish 100/60/30. Gerbang ⚡ = boost 3 dtk, 🛡️ = shield 5 dtk.
+   disetir dari tab laptop lain: `…/race3d.html?drive` (W/S gas, A/D belok, Q/E skill, H klakson, Enter chat).
+3. Tampilan HP (sesuai konsep "Lapangan"): status bar atas, peta mini kiri atas, chat kanan,
+   joystick kiri bawah, tombol skill merah kanan bawah (⚡ boost, 🛡️ shield, 📣 klakson).
+4. Sebelum mulai = latihan bebas. Klik **▶ Mulai balapan** di laptop → hitung mundur → 2 lap.
+5. Lewati gerbang berurutan (gerbang berikutnya **hijau**): +10 per gerbang, +50 per lap,
+   bonus finish 100/60/30. Gerbang ⚡/🛡️ mengisi slot power-up; tekan tombol skill untuk memakainya.
    Pemenang = **skor tertinggi** (bonus finish ikut dihitung). Balapan selesai saat semua mobil finish atau 5 menit.
 
 Detail rancangan & cara mobil fisik memakai logika yang sama: [docs/08-SIM-3D.md](docs/08-SIM-3D.md).
