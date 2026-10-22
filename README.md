@@ -25,6 +25,13 @@ laptop kantor atau rumah — dan HP bisa ikut lewat QR. Kuota gratis ±60 jam/bu
 3. Laptop: klik **Layar arena**. HP: scan **QR RC1/RC2/RC3** di halaman depan → langsung menyetir mobil itu.
 4. Selesai tes: tutup tab saja (atau **Stop codespace** biar kuota hemat).
 
+**Kode terbaru otomatis:** tiap Codespace menyala, ia menjalankan `git pull` dari GitHub lalu
+menyalakan server. Kalau Codespace sedang jalan dan ada PR baru yang di-merge, cukup ketik di terminal:
+```bash
+npm run update     # git pull + npm ci (kalau perlu) + restart server
+```
+lalu refresh halaman di browser dengan **Ctrl+Shift+R**.
+
 > Kalau HP diminta login GitHub, port belum publik: di tab **PORTS** klik kanan
 > port 3000 → **Port Visibility → Public**. Log server: `cat /tmp/rc-server.log`.
 
