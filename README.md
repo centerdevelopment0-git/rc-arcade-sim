@@ -9,7 +9,49 @@ Karya **orisinal** (terinspirasi konsep, bukan clone app mana pun).
 
 ---
 
-## 🚀 Cara menjalankan (3 langkah)
+## 🌍 Tes dari kantor & rumah (cara paling mudah: GitHub Codespaces)
+
+Gratis, **tanpa kartu kredit**, cukup akun GitHub. Jalan dari browser mana pun —
+laptop kantor atau rumah — dan HP bisa ikut lewat QR. Kuota gratis ±60 jam/bulan
+(mesin 2-core); Codespace otomatis berhenti setelah 30 menit tidak dipakai.
+
+**Tiap kali mau tes:**
+1. Buka repo di GitHub → tombol hijau **Code** → tab **Codespaces** →
+   **Create codespace on main** (kali berikutnya: pilih codespace yang sudah ada).
+2. Tunggu ±1–2 menit. Server menyala sendiri dan tab browser baru terbuka ke
+   halaman depan (alamatnya mirip `https://<nama>-3000.app.github.dev/`).
+   Kalau tab tidak terbuka: tab **PORTS** di bawah → klik ikon 🌐 di port 3000.
+3. Laptop: klik **Arena**. HP: scan **QR** di halaman depan → kontroler terbuka.
+4. Selesai tes: tutup tab saja (atau **Stop codespace** biar kuota hemat).
+
+> Kalau HP diminta login GitHub, port belum publik: di tab **PORTS** klik kanan
+> port 3000 → **Port Visibility → Public**. Log server: `cat /tmp/rc-server.log`.
+
+### Alternatif: Render (server selalu online, butuh akun Render)
+
+Deploy sekali ke **Render (gratis)**, lalu cukup buka satu URL dari browser mana pun —
+laptop kantor, laptop rumah, atau HP pakai data seluler. Tidak perlu install apa-apa.
+
+**Setup sekali (±5 menit):**
+1. Login ke [render.com](https://render.com) pakai akun GitHub.
+2. **New → Blueprint** → pilih repo `rc-arcade-sim`, branch `main` → **Apply**.
+   Render membaca [`render.yaml`](render.yaml) otomatis (plan free, health check `/healthz`).
+3. Tunggu build selesai → dapat URL, mis. `https://rc-arcade-sim.onrender.com`.
+
+**Tiap kali mau tes (kantor atau rumah, sama saja):**
+1. Laptop: buka `https://<url-kamu>/arena.html?n=5` (layar mobil).
+2. HP: scan **QR** di halaman depan `https://<url-kamu>/` → kontroler terbuka.
+3. Geser gas/belok di HP → mobil di arena bergerak.
+4. Opsional, isi arena dengan mobil otomatis dari laptop mana pun:
+   `node bot.js 3 wss://<url-kamu>`
+
+> Catatan plan free: server **tidur** setelah ±15 menit tanpa pengunjung.
+> Pembukaan pertama sesudahnya butuh ±30–60 detik (halaman akan menyambung sendiri).
+> Setiap `git push` ke `main` → otomatis deploy ulang.
+
+---
+
+## 🚀 Cara menjalankan lokal (3 langkah)
 
 ```bash
 cd rc-arcade-sim
@@ -24,11 +66,19 @@ Dari HP (WiFi)  : http://10.61.190.8:3000/controller.html  (kontroler HP)
 ```
 
 Lalu:
-1. **Di laptop**: buka link **car.html** → ini layar mobilnya.
-2. **Di HP** (WiFi yang sama): buka link **controller.html** → ini stir-nya.
-3. **Geser joystick di HP** → mobil di laptop bergerak. 🎉
+1. **Di laptop**: buka `http://localhost:3000/` → klik **Arena**.
+2. **Di HP** (WiFi yang sama): scan QR di halaman depan → kontroler terbuka.
+3. **Geser gas/belok di HP** → mobil di laptop bergerak. 🎉
 
-Tidak punya 2 perangkat? Buka `car.html` dan `controller.html` di dua tab browser yang sama — tetap jalan.
+Tidak punya 2 perangkat? Buka arena dan `keyboard.html` di dua tab — setir pakai WASD.
+Jaringan kantor sering memblokir akses antar perangkat di WiFi; kalau HP tidak bisa
+membuka alamat laptop, pakai cara **Render** di atas.
+
+## ✅ Uji otomatis
+```bash
+npm test     # jalankan server, cek alur HP → server → mobil, tolak kontroler kedua, dll
+```
+Tes yang sama jalan otomatis di GitHub Actions tiap push / PR.
 
 ---
 
@@ -37,8 +87,14 @@ Tidak punya 2 perangkat? Buka `car.html` dan `controller.html` di dua tab browse
 server.js           Relay "cloud" (WebSocket) + penyaji halaman
 public/
   controller.html   Kontroler HP (joystick gas + belok)
-  car.html          Mobil simulasi (fisika + visual)
-  index.html        Halaman pembuka
+  arena.html        Arena multi-mobil (RC1..RCn)
+  keyboard.html     Kontroler keyboard (laptop)
+  monitor.html      Dashboard monitor (beban, LED, log)
+  car.html          Satu mobil simulasi (?car=car1)
+  index.html        Halaman pembuka + QR untuk HP
+bot.js              HP palsu otomatis (uji beban)
+test/               Uji otomatis (npm test)
+render.yaml         Blueprint deploy Render (gratis)
 docs/               Dokumen proyek (PRD, arsitektur, protokol, dll) — baca docs/README.md
 ```
 
@@ -47,6 +103,6 @@ Semua dokumen ada di **[docs/](docs/README.md)** — mulai dari situ:
 PRD, Arsitektur, Protokol pesan, analisis RE app acuan, Roadmap, Backlog fitur, Test plan.
 
 ## 🔌 Langkah berikutnya
-- Deploy ke cloud + akun/sesi → [docs/05-ROADMAP.md](docs/05-ROADMAP.md) Fase 2.
+- Akun/login, antrian & waktu sesi → [docs/05-ROADMAP.md](docs/05-ROADMAP.md) Fase 2.
 - Hubungkan RC car fisik (ESP32) + video live → Fase 3.
 - Tambah/buang fitur → [docs/06-BACKLOG.md](docs/06-BACKLOG.md).

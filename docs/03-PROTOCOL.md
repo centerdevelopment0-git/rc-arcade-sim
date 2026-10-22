@@ -27,8 +27,14 @@ Telemetry dari car carX → ke semua controller carX.
 
 ### 2.2 `presence` (server → controller & car di car itu)
 ```json
-{ "type":"presence", "car":"car1", "carOnline":true, "controllers":2 }
+{ "type":"presence", "car":"car1", "carOnline":true, "controllers":1, "driver":"Budi" }
 ```
+
+### 2.2b `denied` (server → controller)
+```json
+{ "type":"denied", "car":"car1", "driver":"Budi" }
+```
+- Dikirim bila mobil sudah dipegang kontroler lain (aturan 1 kontroler per mobil).
 
 ### 2.3 `control` (controller → server → car)
 ```json
@@ -40,7 +46,7 @@ Telemetry dari car carX → ke semua controller carX.
 | `steer` | −1.0 … 1.0 | − kiri, + kanan |
 | `t` | epoch ms | waktu kirim (ukur latensi) |
 
-> `car` diisi server dari ikatan pengirim. **Wajib** di sisi mobil: clamp nilai +
+> `car` diisi server dari ikatan pengirim. Server meng-clamp `throttle`/`steer` ke −1..1 (bukan angka → 0). **Wajib** di sisi mobil: clamp nilai +
 > failsafe (anggap 0,0) bila tak ada `control` > 400 ms.
 
 ### 2.4 `telemetry` (car → server → controller)

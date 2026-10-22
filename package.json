@@ -3,6 +3,15 @@
   "version": "0.1.0",
   "description": "Simulasi cloud RC arcade: HP -> relay server -> mobil (virtual). Karya orisinal.",
   "type": "module",
-  "scripts": { "start": "node server.js" },
-  "dependencies": { "ws": "^8.18.0" }
+  "scripts": {
+    "start": "node server.js",
+    "bot": "node bot.js",
+    "test": "node --test test/*.test.js"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  },
+  "engines": {
+    "node": ">=18"
+  }
 }

@@ -53,8 +53,17 @@ function skillsSnapshot(c, now){
 const MIME = { '.html':'text/html', '.js':'text/javascript', '.css':'text/css' };
 const server = http.createServer((req, res) => {
   let url = req.url.split('?')[0];
+  // health check (dipakai Render & tes otomatis)
+  if (url === '/healthz') {
+    res.writeHead(200, { 'Content-Type':'application/json' });
+    res.end(JSON.stringify({ ok:true, uptime:Math.floor((Date.now()-startedAt)/1000), clients:clients.size,
+                             lan:lanIPs().map(ip => `http://${ip}:${PORT}`) }));
+    return;
+  }
+  if (url === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (url === '/') url = '/index.html';
   const file = path.join(PUBLIC, path.normalize(url).replace(/^(\.\.[/\\])+/, ''));
+  if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(404); res.end('404'); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('404'); return; }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
@@ -76,6 +85,8 @@ function getCar(id) {
                    onlineSince:0, skills:{}, ctrl:0, tel:0, lastCtrl:0, lastTel:0, cps:0, tps:0 });
   return cars.get(id);
 }
+// input kontrol harus angka -1..1 (sisanya dianggap 0) — lihat docs/07-TEST-PLAN "Clamp input"
+function clamp1(v) { v = Number(v); return Number.isFinite(v) ? Math.max(-1, Math.min(1, v)) : 0; }
 function out(ws, obj) { if (ws && ws.readyState === 1) { ws.send(JSON.stringify(obj)); gOut++; } }
 
 function presence(carId) {
@@ -88,6 +99,8 @@ function presence(carId) {
 
 wss.on('connection', (ws) => {
   clients.set(ws, { role:null, car:null });
+  ws.isAlive = true;
+  ws.on('pong', () => { ws.isAlive = true; });
 
   ws.on('message', (raw) => {
     gIn++;
@@ -104,6 +117,7 @@ wss.on('connection', (ws) => {
       else {
         // aturan: 1 kontroler aktif per mobil
         if (c.controllers.size >= 1) {
+          info.role = null;   // ditolak: tidak dihitung sebagai kontroler
           out(ws, { type:'denied', car:info.car, driver:c.driver });
           console.log(`[x] ${info.name} ditolak di ${info.car} (dipakai ${c.driver})`);
           return;
@@ -119,8 +133,8 @@ wss.on('connection', (ws) => {
     if (m.type === 'control' && info.role === 'controller') {
       const c = cars.get(info.car); if (!c || !c.controllers.has(ws)) return; // hanya kontroler aktif
       c.ctrl++; c.lastCtrl = Date.now();
-      c.lastThr = m.throttle||0; c.lastStr = m.steer||0;               // rekam isi input terakhir
-      out(c.carWs, { type:'control', car:info.car, throttle:m.throttle||0, steer:m.steer||0, t:m.t });
+      c.lastThr = clamp1(m.throttle); c.lastStr = clamp1(m.steer);     // rekam isi input terakhir
+      out(c.carWs, { type:'control', car:info.car, throttle:c.lastThr, steer:c.lastStr, t:m.t });
     }
     // telemetry: mobil -> semua kontroler mobil itu
     else if (m.type === 'telemetry' && info.role === 'car') {
@@ -154,6 +168,16 @@ wss.on('connection', (ws) => {
     presence(info.car);
   });
 });
+
+// ---------- Heartbeat: putuskan koneksi mati (HP keluar jangkauan, tab di-suspend) ----------
+// Tanpa ini, kontroler "hantu" bisa mengunci mobil karena aturan 1 kontroler per mobil.
+// Ping juga menjaga koneksi tetap hidup di balik proxy cloud (Render dsb).
+setInterval(() => {
+  for (const ws of wss.clients) {
+    if (!ws.isAlive) { ws.terminate(); continue; }
+    ws.isAlive = false; ws.ping();
+  }
+}, 15000);
 
 // ---------- 3) Hitung laju pesan per detik ----------
 setInterval(() => {
