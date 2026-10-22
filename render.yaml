@@ -5,6 +5,7 @@ services:
     name: rc-arcade-sim
     runtime: node
     plan: free
-    buildCommand: npm install
+    buildCommand: npm ci
     startCommand: node server.js
     autoDeploy: true   # tiap git push -> otomatis deploy ulang
+    healthCheckPath: /healthz   # Render cek server hidup lewat sini

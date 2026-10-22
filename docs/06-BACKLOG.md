@@ -56,7 +56,9 @@ Legenda status: ✅ selesai · 🔨 sedang · ⬜ belum · ❌ dibuang
 | ✅ | M4 | Bot (HP palsu) buat beban & otomatis | `bot.js` |
 | ✅ | M5 | Dashboard monitor (jalur koneksi, beban, user) | `public/monitor.html` |
 | ✅ | M6 | LED status per RC (online / data in / data out) | arena + monitor |
-| ⬜ | M7 | 1 kontroler aktif per mobil (tolak yg kedua) | `server.js` |
+| ✅ | M7 | 1 kontroler aktif per mobil (tolak yg kedua) | `server.js` |
+| ✅ | M10 | Deploy cloud (Render) + QR kontroler di halaman depan | `render.yaml`, `index.html` |
+| ✅ | M11 | Heartbeat ping/pong + clamp input + uji otomatis | `server.js`, `test/` |
 | ⬜ | M8 | Token sesi / nama pemain | semua |
 | ⬜ | M9 | Grafik beban historis (bukan cuma angka live) | `monitor.html` |
 

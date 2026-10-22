@@ -12,12 +12,15 @@
 - [x] Failsafe kehilangan sinyal
 - **Done when:** geser joystick di HP → mobil di layar laptop bergerak sesuai, lewat server.
 
-## Fase 2 — Akun, sesi & deploy cloud ⬜
+## Fase 2 — Akun, sesi & deploy cloud 🔨
 **Tujuan:** siap banyak pengguna & online beneran.
-- [ ] Deploy server ke cloud (Render/Railway/Fly) + `wss://`
+- [x] Siap deploy ke cloud (Render free, `render.yaml`) + `wss://` otomatis + health check `/healthz`
 - [ ] Akun & login (mulai sederhana: kode/nama; lalu Firebase Auth/Google)
 - [ ] Pilih/daftar mobil = pilih `room`
-- [ ] 1 kontroler aktif per mobil (tolak yang kedua) + token sesi
+- [x] 1 kontroler aktif per mobil (tolak yang kedua)
+- [x] Heartbeat: koneksi mati diputus otomatis (mobil tidak terkunci kontroler hantu)
+- [x] Clamp input kontrol di server + uji otomatis (`npm test`, GitHub Actions)
+- [ ] Token sesi
 - [ ] Antrian & batas waktu sesi
 - **Done when:** 2 orang dari jaringan berbeda bisa pakai 2 mobil berbeda tanpa bentrok.
 

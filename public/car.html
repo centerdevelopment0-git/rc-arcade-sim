@@ -24,22 +24,25 @@
   <canvas id="c" width="900" height="560"></canvas>
 
 <script>
-const ROOM = new URLSearchParams(location.search).get('room') || 'demo1';
+// satu mobil tunggal; pilih id lewat ?car=car1 (sama seperti kontroler)
+const CAR = new URLSearchParams(location.search).get('car') || 'car1';
+document.title = CAR.toUpperCase() + ' — RC Mobil (Simulasi)';
 
 // ---- state mobil (model sepeda sederhana) ----
 const car = { x:450, y:280, heading:0, speed:0 };
-let throttle = 0, steer = 0, lastCmd = 0;
+let throttle = 0, steer = 0, lastCmd = 0, speedMul = 0.7;
 
 // ---- koneksi ke relay ----
 let ws;
 function connect(){
   ws = new WebSocket(`${location.protocol==='https:'?'wss':'ws'}://${location.host}`);
-  ws.onopen = () => ws.send(JSON.stringify({ type:'hello', role:'car', room:ROOM }));
+  ws.onopen = () => ws.send(JSON.stringify({ type:'hello', role:'car', car:CAR }));
   ws.onclose = () => { setDot(false,'putus — menyambung ulang…'); setTimeout(connect,1000); };
   ws.onmessage = (e) => {
     const m = JSON.parse(e.data);
-    if (m.type === 'presence') setDot(m.controller, m.controller ? 'kontroler tersambung' : 'menunggu kontroler…');
+    if (m.type === 'presence') setDot(m.controllers > 0, m.controllers > 0 ? (CAR.toUpperCase()+' • disetir '+(m.driver||'pemain')) : (CAR.toUpperCase()+' • menunggu kontroler…'));
     if (m.type === 'control') { throttle = m.throttle||0; steer = m.steer||0; lastCmd = Date.now(); }
+    if (m.type === 'skills') speedMul = m.speedMul || 0.7;
   };
 }
 const d=document.getElementById('d'), st=document.getElementById('st');
@@ -55,7 +58,7 @@ setInterval(() => {
 
 // ---- fisika + render ----
 const c = document.getElementById('c'), ctx = c.getContext('2d');
-const ACCEL=260, FRICTION=1.6, MAXSPEED=240, TURN=2.4;
+const ACCEL=440, FRICTION=1.6, MAXSPEED=240, TURN=2.4;
 let prev = performance.now();
 
 function step(now){
@@ -67,7 +70,8 @@ function step(now){
   car.speed += throttle * ACCEL * dt;
   const drag = FRICTION * dt;
   car.speed -= car.speed * drag;
-  car.speed = Math.max(-MAXSPEED*0.5, Math.min(MAXSPEED, car.speed));
+  const effMax = MAXSPEED * speedMul;   // skill (turbo) menaikkan batas ini
+  car.speed = Math.max(-effMax*0.5, Math.min(effMax, car.speed));
   car.heading += steer * TURN * dt * (car.speed/MAXSPEED);
 
   car.x += Math.cos(car.heading) * car.speed * dt;

@@ -22,6 +22,10 @@
 - **Satu kontroler per mobil** (Fase 2): buka 2 kontroler ke room sama → yang kedua ditolak / tidak ikut mengontrol.
 - **Clamp input**: kirim `throttle` di luar −1..1 (lewat alat manual) → mobil tetap aman.
 
+## 2b. Uji otomatis
+`npm test` menjalankan server asli dan mengecek: halaman tersaji, `control` sampai ke mobil (dengan clamp),
+`telemetry` balik, kontroler kedua ditolak, mobil bebas lagi setelah kontroler keluar, monitor menerima `stats`.
+
 ## 3. Uji latensi (sederhana)
 - Field `t` di `control` = waktu kirim. Bandingkan dengan waktu terima di mobil.
 - Target kasar: < 200 ms di jaringan lokal; catat saat pindah ke cloud.
@@ -32,8 +36,8 @@
 - Batasi kecepatan maksimum saat kalibrasi pertama.
 
 ## 5. Checklist rilis (sebelum online untuk umum)
-- [ ] Pakai `wss://` (bukan `ws://`)
+- [x] Pakai `wss://` (bukan `ws://`) — otomatis saat dibuka via https
 - [ ] Failsafe lulus
 - [ ] 1 kontroler/mobil + token sesi
-- [ ] Validasi/clamp semua input kontrol
+- [x] Validasi/clamp semua input kontrol (`server.js`, dicek `npm test`)
 - [ ] Uji di HP beneran (bukan cuma desktop)
