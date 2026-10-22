@@ -82,7 +82,7 @@ Legenda status: ✅ selesai · 🔨 sedang · ⬜ belum · ❌ dibuang
 |:--:|--|--|--|
 | ✅ | R1 | Arena 3D + kamera POV per HP | `public/race3d.html` |
 | ✅ | R2 | Server authoritative + failsafe 1 dtk | `race-server.js` |
-| ✅ | R3 | Gerbang berurutan, lap, skor, boost/shield, pemenang | `shared/race.js` |
+| ✅ | R3 | Gerbang berurutan, lap, skor, boost/shield, pemenang skor tertinggi | `shared/race.js` |
 | ✅ | R4 | Jalur mobil fisik (`role:'device'`, `checkpointSeen`) | `race-server.js` |
 | ⬜ | R5 | Simulasi baca QR dari frame POV (ADR-0012) | — |
 | ⬜ | R6 | Prediksi sisi klien (setir lebih responsif) | `race3d.html` |

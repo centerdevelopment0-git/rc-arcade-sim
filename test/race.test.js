@@ -41,18 +41,27 @@ test('lap +50, power-up aktif lalu habis', () => {
   assert.equal(r.cars.get('car1').score, 4 * 10 + 50);
 });
 
-test('pemenang = finish pertama (+bonus posisi), hasil keluar saat semua finish', () => {
-  const r = racing();
-  for (let i = 0; i < ARENA.laps; i++) lap(r, 'car2', 5000);
-  assert.equal(r.cars.get('car2').place, 1);
-  assert.equal(r.tick(5000), null);                     // car1 belum finish
-  for (let i = 0; i < ARENA.laps; i++) lap(r, 'car1', 6000);
+test('pemenang = skor tertinggi, bukan yang finish pertama', () => {
+  const r = racing(['car1', 'car2']);
+  // car1 finish duluan; car2 menyusul tapi dapat skor lebih besar dari gerbang tambahan
+  for (let i = 0; i < ARENA.laps; i++) lap(r, 'car1', 5000);
+  assert.equal(r.cars.get('car1').place, 1);
+  assert.equal(r.tick(5000), null);                     // car2 belum finish
+  r.cars.get('car2').score += 200;                       // mis. bonus lain di masa depan
+  for (let i = 0; i < ARENA.laps; i++) lap(r, 'car2', 6000);
   const res = r.tick(6000);
   assert.equal(r.phase, 'finished');
   assert.deepEqual(res.standings.map(s => s.vehicleId), ['car2', 'car1']);
   const perLap = 4 * 10 + 50;
-  assert.equal(res.standings[0].score, ARENA.laps * perLap + RULES.finishBonus[0]);
-  assert.equal(res.standings[1].score, ARENA.laps * perLap + RULES.finishBonus[1]);
+  assert.equal(res.standings[1].score, ARENA.laps * perLap + RULES.finishBonus[0]);
+  assert.equal(res.standings[0].score, 200 + ARENA.laps * perLap + RULES.finishBonus[1]);
+});
+
+test('skor seri: yang finish lebih dulu di atas', () => {
+  const r = racing(['car1', 'car2']);
+  for (let i = 0; i < ARENA.laps; i++) { lap(r, 'car2', 5000); lap(r, 'car1', 5000); }
+  r.cars.get('car1').score = r.cars.get('car2').score = 300;
+  assert.deepEqual(r.standings().map(s => s.vehicleId), ['car2', 'car1']);
 });
 
 test('lobby tidak menghitung gerbang', () => {

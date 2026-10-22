@@ -72,7 +72,7 @@
   <input id="pname" maxlength="16" placeholder="Nama kamu">
   <div class="cars" id="cars"></div>
   <small>Kiri bawah: belok. Kanan bawah: gas (atas maju, bawah mundur).<br>
-    Laptop: W/S gas, A/D belok. Lewati gerbang <b>berurutan</b>; ⚡ boost & 🛡️ shield di gerbang tertentu.</small>
+    Laptop: W/S gas, A/D belok. Lewati gerbang <b>berurutan</b>; ⚡ boost & 🛡️ shield di gerbang tertentu. Pemenang = <b>skor tertinggi</b>.</small>
 </div></div>
 
 <div id="steerPad" class="pad hidden"><div class="padlabel">◀ BELOK ▶</div><div class="knob"></div></div>
@@ -269,10 +269,10 @@ function updateHUD(mine) {
       Skor <b>${mine.score}</b> · ${(Math.abs(mine.speed) * 3.6).toFixed(1)} km/j${pu}`;
   } else if (!DRIVE) {
     $('stats').innerHTML = `<b>🏁 Balapan 3D</b> · ${PHASE[s.phase]}${s.phase === 'racing' ? ' · ' + fmt(s.raceMs) : ''}`;
-    const rows = [...s.vehicles].sort((a, b) => (a.place ?? 99) - (b.place ?? 99) || b.score - a.score).map(v => `<tr>
+    const rows = [...s.vehicles].sort((a, b) => b.score - a.score || (a.place ?? 99) - (b.place ?? 99)).map(v => `<tr>
       <td><span class="sw" style="background:${COLORS[v.id]}"></span>${v.id.toUpperCase()}${v.kind === 'physical' ? ' 🔌' : ''}</td>
       <td>${v.driver ? v.driver : '<span style="color:var(--muted)">kosong</span>'}</td>
-      <td>${v.place ? '🏆' + v.place : 'L' + Math.min(v.lap + 1, arena.laps)}</td><td><b>${v.score}</b></td>
+      <td>${v.finished ? '🏁' : 'L' + Math.min(v.lap + 1, arena.laps)}</td><td><b>${v.score}</b></td>
       <td>${v.powerUp ? rules.powerUps[v.powerUp.type].icon : ''}</td></tr>`).join('');
     $('board').innerHTML = `<table><tr style="color:var(--muted)"><td>Mobil</td><td>Pemain</td><td>Lap</td><td>Skor</td><td></td></tr>${rows}</table>`;
     const drivers = s.vehicles.filter(v => v.driver || v.kind === 'physical').length;
@@ -283,7 +283,7 @@ function updateHUD(mine) {
   else if (s.phase === 'racing' && s.raceMs < 800) center = 'GO!';
   else if (s.phase === 'finished' && s.result) {
     const w = s.result.standings[0];
-    center = `<div style="font-size:40px">🏆 ${w.vehicleId.toUpperCase()} menang</div>` +
+    center = `<div style="font-size:40px">🏆 ${w.vehicleId.toUpperCase()} menang · skor tertinggi</div>` +
       s.result.standings.map(r => `<div style="font-size:18px;font-weight:600">${r.position}. ${r.vehicleId.toUpperCase()} — ${r.score} poin${r.finished ? ' · ' + fmt(r.finishMs) : ''}</div>`).join('');
   }
   if ($('center').dataset.v !== String(center)) { $('center').innerHTML = center; $('center').dataset.v = String(center); }

@@ -62,7 +62,7 @@ dari **kamera POV di kap mobil**, persis seperti kamera mobil fisik nanti.
 3. Sebelum mulai = latihan bebas. Klik **▶ Mulai balapan** di laptop → hitung mundur → 2 lap.
 4. Lewati gerbang berurutan (gerbang berikutnya **hijau** di layar HP): +10 per gerbang,
    +50 per lap, bonus finish 100/60/30. Gerbang ⚡ = boost 3 dtk, 🛡️ = shield 5 dtk.
-   Pemenang = yang finish pertama.
+   Pemenang = **skor tertinggi** (bonus finish ikut dihitung). Balapan selesai saat semua mobil finish atau 5 menit.
 
 Detail rancangan & cara mobil fisik memakai logika yang sama: [docs/08-SIM-3D.md](docs/08-SIM-3D.md).
 

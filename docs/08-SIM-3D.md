@@ -2,14 +2,14 @@
 
 **Tanggal:** 2026-10-22 · Status: versi terkecil, siap dites lewat Codespaces.
 Acuan keputusan di repo `krca`: ADR-0007 (digital twin), ADR-0009 (open track),
-ADR-0010 (power-up & skor, masih *Proposed*), ADR-0011 (POV), ADR-0012 (checkpoint QR).
+ADR-0010 (power-up & skor; Cidi 2026-10-22: langsung dipakai, pemenang = skor tertinggi), ADR-0011 (POV), ADR-0012 (checkpoint QR).
 
 ## Apa yang ada
 | Bagian | File | Isi |
 |---|---|---|
 | Arena & aturan | `shared/arena.js` | Arena 12 × 8 m, 4 gerbang (G1 ⚡ boost, G3 🛡️ shield), 3 rintangan, 2 lap, angka skor |
 | Fisika | `shared/physics.js` | Model "bicycle", tabrakan dinding/rintangan/mobil, deteksi lintas gerbang |
-| Aturan balapan | `shared/race.js` | Urutan gerbang, lap, skor, power-up, pemenang (finish pertama) |
+| Aturan balapan | `shared/race.js` | Urutan gerbang, lap, skor, power-up, pemenang (skor tertinggi; seri → finish lebih dulu) |
 | Room | `race-server.js` | Server authoritative: tick 30 Hz, snapshot 20 Hz, failsafe input basi 1 dtk |
 | Tampilan | `public/race3d.html` | Three.js: layar penonton (laptop) & mode setir POV (HP, `?drive`) |
 
@@ -45,7 +45,7 @@ Input -1..1 (ADR-0007 krca memakai -100..100; konversi cukup di satu tempat saat
   ~100–200 ms, masih terasa sedikit delay saat belok tajam.
 - Fisika sederhana (tidak ada drift/suspensi). Angka kecepatan (maks 4 m/s ≈ 14 km/j) perlu
   dicocokkan dengan mobil RC yang dibeli.
-- Aturan ADR-0010 masih *Proposed* — angka di `RULES` mudah diubah.
+- Angka skor & power-up ada di `RULES` (`shared/arena.js`) dan mudah diubah.
 
 ## Langkah berikutnya (usulan)
 1. Simulasi kamera membaca QR: render QR di gerbang 3D lalu decode dari frame POV, supaya

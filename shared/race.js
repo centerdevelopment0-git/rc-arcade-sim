@@ -77,10 +77,11 @@ export class Race {
     return null;
   }
 
-  // pemenang = posisi finish (opsi A ADR-0010); yang belum finish diurutkan dari progres
+  // pemenang = SKOR TERTINGGI (keputusan Cidi 2026-10-22, opsi B ADR-0010).
+  // Seri -> yang finish lebih dulu, lalu yang lebih banyak melewati gerbang.
   standings() {
     return [...this.cars.entries()].map(([id, c]) => ({ id, ...c }))
-      .sort((a, b) => (a.place ?? 99) - (b.place ?? 99) || b.gatesPassed - a.gatesPassed || b.score - a.score)
+      .sort((a, b) => b.score - a.score || (a.place ?? 99) - (b.place ?? 99) || b.gatesPassed - a.gatesPassed)
       .map((c, i) => ({ position: i + 1, vehicleId: c.id, score: c.score, lap: c.lap, finished: c.finished, finishMs: c.finishMs }));
   }
 }
