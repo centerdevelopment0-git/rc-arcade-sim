@@ -14,7 +14,7 @@
 
 ## Fase 2 — Akun, sesi & deploy cloud 🔨
 **Tujuan:** siap banyak pengguna & online beneran.
-- [x] Siap deploy ke cloud (Render free, `render.yaml`) + `wss://` otomatis + health check `/healthz`
+- [x] Bisa dites dari mana saja: GitHub Codespaces (`.devcontainer/`) atau Render free (`render.yaml`) + `wss://` otomatis + health check `/healthz`
 - [ ] Akun & login (mulai sederhana: kode/nama; lalu Firebase Auth/Google)
 - [ ] Pilih/daftar mobil = pilih `room`
 - [x] 1 kontroler aktif per mobil (tolak yang kedua)

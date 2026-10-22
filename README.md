@@ -9,7 +9,25 @@ Karya **orisinal** (terinspirasi konsep, bukan clone app mana pun).
 
 ---
 
-## 🌍 Tes dari kantor & rumah (cara paling mudah)
+## 🌍 Tes dari kantor & rumah (cara paling mudah: GitHub Codespaces)
+
+Gratis, **tanpa kartu kredit**, cukup akun GitHub. Jalan dari browser mana pun —
+laptop kantor atau rumah — dan HP bisa ikut lewat QR. Kuota gratis ±60 jam/bulan
+(mesin 2-core); Codespace otomatis berhenti setelah 30 menit tidak dipakai.
+
+**Tiap kali mau tes:**
+1. Buka repo di GitHub → tombol hijau **Code** → tab **Codespaces** →
+   **Create codespace on main** (kali berikutnya: pilih codespace yang sudah ada).
+2. Tunggu ±1–2 menit. Server menyala sendiri dan tab browser baru terbuka ke
+   halaman depan (alamatnya mirip `https://<nama>-3000.app.github.dev/`).
+   Kalau tab tidak terbuka: tab **PORTS** di bawah → klik ikon 🌐 di port 3000.
+3. Laptop: klik **Arena**. HP: scan **QR** di halaman depan → kontroler terbuka.
+4. Selesai tes: tutup tab saja (atau **Stop codespace** biar kuota hemat).
+
+> Kalau HP diminta login GitHub, port belum publik: di tab **PORTS** klik kanan
+> port 3000 → **Port Visibility → Public**. Log server: `cat /tmp/rc-server.log`.
+
+### Alternatif: Render (server selalu online, butuh akun Render)
 
 Deploy sekali ke **Render (gratis)**, lalu cukup buka satu URL dari browser mana pun —
 laptop kantor, laptop rumah, atau HP pakai data seluler. Tidak perlu install apa-apa.

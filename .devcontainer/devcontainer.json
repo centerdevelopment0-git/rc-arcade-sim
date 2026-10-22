@@ -1,0 +1,11 @@
+{
+  // GitHub Codespaces: server jalan otomatis, port 3000 dibuat publik supaya HP bisa buka.
+  "name": "rc-arcade-sim",
+  "image": "mcr.microsoft.com/devcontainers/javascript-node:22",
+  "forwardPorts": [3000],
+  "portsAttributes": {
+    "3000": { "label": "RC Arcade Sim", "onAutoForward": "openBrowser" }
+  },
+  "postCreateCommand": "npm ci",
+  "postStartCommand": "bash .devcontainer/start.sh"
+}
