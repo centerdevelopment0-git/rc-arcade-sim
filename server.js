@@ -15,10 +15,17 @@ import path from 'node:path';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
+import { createRaceServer } from './race-server.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3000;
 const PUBLIC = path.join(__dirname, 'public');
+// folder statis tambahan: prefix URL -> folder (logika sim bersama & Three.js untuk balapan 3D)
+const STATIC_DIRS = [
+  ['/shared/', path.join(__dirname, 'shared')],
+  ['/vendor/three/', path.join(__dirname, 'node_modules', 'three', 'build')],
+  ['/', PUBLIC],
+];
 
 // ---------- Skill (SCALABLE) ----------
 // Tambah skill baru cukup tulis satu baris di SKILLS. Semua UI & logika ikut otomatis.
@@ -62,8 +69,9 @@ const server = http.createServer((req, res) => {
   }
   if (url === '/favicon.ico') { res.writeHead(204); res.end(); return; }
   if (url === '/') url = '/index.html';
-  const file = path.join(PUBLIC, path.normalize(url).replace(/^(\.\.[/\\])+/, ''));
-  if (!file.startsWith(PUBLIC + path.sep)) { res.writeHead(404); res.end('404'); return; }
+  const [prefix, dir] = STATIC_DIRS.find(([p]) => url.startsWith(p));
+  const file = path.join(dir, path.normalize(url.slice(prefix.length - 1)).replace(/^(\.\.[/\\])+/, ''));
+  if (!file.startsWith(dir + path.sep)) { res.writeHead(404); res.end('404'); return; }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404); res.end('404'); return; }
     res.writeHead(200, { 'Content-Type': MIME[path.extname(file)] || 'application/octet-stream' });
@@ -72,7 +80,12 @@ const server = http.createServer((req, res) => {
 });
 
 // ---------- 2) Registry & statistik ----------
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ noServer: true });
+const raceServer = createRaceServer();   // balapan 3D di ws://host/race
+server.on('upgrade', (req, socket, head) => {
+  const target = req.url.split('?')[0] === '/race' ? raceServer.wss : wss;
+  target.handleUpgrade(req, socket, head, ws => target.emit('connection', ws, req));
+});
 const clients = new Map();   // ws -> { role, car }
 const cars = new Map();      // carId -> { carWs, controllers:Set<ws>, ctrl, tel, lastCtrl, lastTel, cps, tps }
 const monitors = new Set();
@@ -173,7 +186,7 @@ wss.on('connection', (ws) => {
 // Tanpa ini, kontroler "hantu" bisa mengunci mobil karena aturan 1 kontroler per mobil.
 // Ping juga menjaga koneksi tetap hidup di balik proxy cloud (Render dsb).
 setInterval(() => {
-  for (const ws of wss.clients) {
+  for (const ws of [...wss.clients, ...raceServer.wss.clients]) {
     if (!ws.isAlive) { ws.terminate(); continue; }
     ws.isAlive = false; ws.ping();
   }
@@ -230,6 +243,7 @@ function lanIPs() {
 }
 server.listen(PORT, '0.0.0.0', () => {
   console.log('\n=== RC Arcade Sim — relay multi-mobil aktif ===');
+  console.log(`Balapan 3D (layar)  : http://localhost:${PORT}/race3d.html            (HP scan QR di layar itu untuk menyetir)`);
   console.log(`Arena (5 mobil)     : http://localhost:${PORT}/arena.html?n=5`);
   console.log(`Dashboard monitor   : http://localhost:${PORT}/monitor.html`);
   console.log(`Keyboard (laptop)   : http://localhost:${PORT}/keyboard.html   (pilih mobil: 1-5, setir: WASD/panah)`);

@@ -51,6 +51,21 @@ laptop kantor, laptop rumah, atau HP pakai data seluler. Tidak perlu install apa
 
 ---
 
+## 🏁 Balapan 3D (simulasi sebelum mobil fisik)
+
+Arena 3D skala RC sungguhan (12 × 8 m, 3 mobil = 3 mobil fisik pilot). Tiap HP melihat
+dari **kamera POV di kap mobil**, persis seperti kamera mobil fisik nanti.
+
+1. Laptop: buka halaman depan → **Balapan 3D** (layar penonton + papan skor + QR).
+2. HP 1 & HP 2 (landscape): scan QR → isi nama → pilih RC1/RC2. Mobil ke-3 bisa
+   disetir dari tab laptop lain: `…/race3d.html?drive` (W/S gas, A/D belok).
+3. Sebelum mulai = latihan bebas. Klik **▶ Mulai balapan** di laptop → hitung mundur → 2 lap.
+4. Lewati gerbang berurutan (gerbang berikutnya **hijau** di layar HP): +10 per gerbang,
+   +50 per lap, bonus finish 100/60/30. Gerbang ⚡ = boost 3 dtk, 🛡️ = shield 5 dtk.
+   Pemenang = yang finish pertama.
+
+Detail rancangan & cara mobil fisik memakai logika yang sama: [docs/08-SIM-3D.md](docs/08-SIM-3D.md).
+
 ## 🚀 Cara menjalankan lokal (3 langkah)
 
 ```bash
@@ -90,8 +105,11 @@ public/
   arena.html        Arena multi-mobil (RC1..RCn)
   keyboard.html     Kontroler keyboard (laptop)
   monitor.html      Dashboard monitor (beban, LED, log)
+  race3d.html       Balapan 3D: layar penonton & mode setir HP (?drive)
   car.html          Satu mobil simulasi (?car=car1)
   index.html        Halaman pembuka + QR untuk HP
+shared/             Logika balapan bersama (arena, fisika, skor) — dipakai sim & mobil fisik
+race-server.js      Room balapan 3D (server authoritative) di WebSocket /race
 bot.js              HP palsu otomatis (uji beban)
 test/               Uji otomatis (npm test)
 render.yaml         Blueprint deploy Render (gratis)
