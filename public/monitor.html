@@ -2,61 +2,84 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dashboard Koneksi — RC Arcade Sim</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Dashboard koneksi</title>
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+<link rel="stylesheet" href="/ui.css">
 <style>
-  :root { --bg:#0f1115; --panel:#1a1d24; --edge:#2a2e37; --text:#e8eaed; --muted:#9aa0b0; --ok:#2ee98b; --in:#3f84d6; --out:#ffb454; --bad:#ff6b6b; }
-  * { box-sizing:border-box; }
-  body { margin:0; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; padding:16px; }
-  h1 { font-size:18px; margin:0 0 4px; } .sub { color:var(--muted); font-size:13px; margin-bottom:14px; }
-  h2 { font-size:12px; color:var(--muted); margin:0 0 10px; text-transform:uppercase; letter-spacing:.5px; }
-  .tiles { display:grid; grid-template-columns:repeat(auto-fit,minmax(120px,1fr)); gap:10px; margin-bottom:14px; }
-  .tile, .panel, .card { background:var(--panel); border:1px solid var(--edge); border-radius:12px; padding:12px; }
-  .tile .v { font-size:22px; font-weight:700; } .tile .k { color:var(--muted); font-size:12px; }
-  .panel { margin-bottom:14px; }
-  .cards { display:grid; grid-template-columns:repeat(auto-fit,minmax(240px,1fr)); gap:12px; }
-  .card h3 { margin:0 0 2px; font-size:16px; display:flex; gap:8px; align-items:center; }
-  .sw { width:12px; height:12px; border-radius:3px; display:inline-block; }
-  .who { color:var(--muted); font-size:12px; margin-bottom:8px; }
-  .leds { display:flex; gap:16px; margin:8px 0; }
-  .ledw { display:flex; flex-direction:column; align-items:center; gap:3px; font-size:10px; color:var(--muted); }
-  .led { width:14px; height:14px; border-radius:50%; background:#333; }
-  .led.on { background:var(--ok); box-shadow:0 0 8px var(--ok); }
-  .led.in { background:var(--in); box-shadow:0 0 8px var(--in); }
-  .led.out { background:var(--out); box-shadow:0 0 8px var(--out); }
-  .row { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; border-top:1px solid #20242e; }
-  .row b { color:#fff; }
-  .diag { font-size:12px; margin-top:8px; padding:6px 8px; border-radius:8px; background:#20242e; }
-  .diag.bad { color:var(--bad); } .diag.ok { color:var(--ok); }
-  table { width:100%; border-collapse:collapse; font-size:13px; }
-  td { padding:4px 6px; border-top:1px solid #20242e; }
-  svg text { fill:var(--muted); font-size:11px; }
-  a { color:#8ab4ff; }
+  main { max-width: 1200px; margin: 0 auto; padding: 32px max(24px, env(safe-area-inset-right)) 48px max(24px, env(safe-area-inset-left)); }
+  header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px; }
+  h1 { font-size: 34px; font-weight: 700; }
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; font-size: 15px; color: var(--label-2); margin-top: 4px; }
+  .legend span { display: inline-flex; align-items: center; gap: 8px; }
+  h2 { font-size: 20px; font-weight: 600; margin: 32px 0 12px; }
+  .card { background: var(--surface); border-radius: var(--r-lg); padding: 16px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; }
+  .tiles .v { font: 700 28px/1.1 var(--font-num); font-variant-numeric: tabular-nums; }
+  .tiles .k { font-size: 13px; color: var(--label-2); margin-top: 4px; }
+  .cars { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px; }
+  .cars h3 { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .badge { font-size: 13px; font-weight: 400; color: var(--label-2); background: var(--fill); border-radius: var(--r-sm); padding: 2px 8px; margin-left: auto;
+           display: inline-flex; align-items: center; gap: 4px; }
+  .who { color: var(--label-2); font-size: 15px; margin: 4px 0 12px; display: flex; align-items: center; gap: 4px; }
+  .leds { display: flex; gap: 16px; font-size: 13px; color: var(--label-2); margin-bottom: 8px; }
+  .leds span { display: inline-flex; align-items: center; gap: 8px; }
+  .leds .dot { background: var(--fill); }
+  .leds .on { background: var(--ok); } .leds .in { background: var(--accent); } .leds .out { background: var(--warn); }
+  dl { margin: 0; font-size: 15px; }
+  dl div { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; box-shadow: inset 0 .5px 0 var(--separator); }
+  dt { color: var(--label-2); } dd { margin: 0; font-weight: 600; font-variant-numeric: tabular-nums; }
+  .diag { font-size: 15px; margin-top: 12px; padding: 8px 12px; border-radius: var(--r-md); background: var(--fill); }
+  .diag.bad { color: var(--danger); } .diag.ok { color: var(--ok); }
+  .table { padding: 0; overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; }
+  th { text-align: left; font-weight: 400; font-size: 13px; color: var(--label-2); padding: 12px 16px 8px; }
+  td { padding: 10px 16px; box-shadow: inset 0 .5px 0 var(--separator); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+  td.bad { color: var(--danger); }
+  #map text { fill: var(--label-2); font-size: 13px; }
+  #map .srv { fill: var(--fill); }
+  #map .srv-t { fill: var(--label); font-weight: 600; }
+  a { color: var(--accent); }
 </style>
 </head>
-<body>
-<h1>📡 Dashboard Koneksi — Balapan 3D</h1>
-<div class="sub">Jalur: <b>HP (input)</b> → <b>SERVER</b> → <b>mobil sim 3D / RC fisik (output)</b>. LED biru = input masuk, oranye = perintah diterapkan ke mobil.
-  Layar arena: <a href="/race3d.html">race3d.html</a></div>
+<body><main>
+<header>
+  <div>
+    <h1>Koneksi</h1>
+    <div class="legend">
+      <span><i class="dot" style="background:var(--accent)"></i>Input masuk dari HP</span>
+      <span><i class="dot" style="background:var(--warn)"></i>Perintah diterapkan ke mobil</span>
+    </div>
+  </div>
+  <a class="btn" href="/race3d.html"><svg class="i"><use href="/icons.svg#display"/></svg>Layar arena</a>
+</header>
 
+<h2>Ringkasan</h2>
 <div class="tiles" id="tiles"></div>
-<div class="panel"><h2>Peta koneksi</h2><svg id="map" width="100%" height="190" viewBox="0 0 760 190"></svg></div>
-<h2>Status per mobil (input → output)</h2>
-<div class="cards" id="cards"></div>
-<div class="panel" style="margin-top:14px"><h2>Klien tersambung</h2><table id="clients"></table></div>
+<h2>Peta koneksi</h2>
+<div class="card"><svg id="map" width="100%" height="190" viewBox="0 0 760 190" role="img" aria-label="Jalur data dari HP pengemudi ke server lalu ke mobil"></svg></div>
+<h2>Mobil</h2>
+<div class="cars" id="cards"></div>
+<h2>Klien tersambung</h2>
+<div class="card table"><table id="clients"></table></div>
+</main>
 
 <script>
-const COLORS = { car1:'#3f84d6', car2:'#2ee98b', car3:'#ff8a3d' };
+const COLORS = { car1:'var(--rc1)', car2:'var(--rc2)', car3:'var(--rc3)' };
 const PHASE = { lobby:'Latihan bebas', countdown:'Hitung mundur', racing:'Balapan', finished:'Selesai' };
+const ROLE = { driver:'Pengemudi', spectator:'Layar arena', monitor:'Dashboard', device:'RC fisik' };
 const $ = id => document.getElementById(id);
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const rc = id => id.toUpperCase().replace('CAR', 'RC');
+const icon = name => `<svg class="i"><use href="/icons.svg#${name}"/></svg>`;
 let ws, last = null;
 
 function connect() {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/race`);
   ws.onopen = () => ws.send(JSON.stringify({ type:'join', role:'monitor' }));
-  ws.onclose = () => { $('tiles').innerHTML = '<div class="tile">putus — menyambung ulang…</div>'; setTimeout(connect, 1000); };
+  ws.onclose = () => { $('tiles').innerHTML = '<div class="card" style="color:var(--warn)">Koneksi putus. Menyambung ulang...</div>'; setTimeout(connect, 1000); };
   ws.onmessage = e => { const m = JSON.parse(e.data); if (m.type === 'snapshot') { last = m; render(m); } };
 }
 connect();
@@ -66,19 +89,19 @@ function diagnose(v, s) {
   const inOk = v.io.msSinceInput != null && v.io.msSinceInput < 1000;
   const outOk = v.io.msSinceOutput != null && v.io.msSinceOutput < 300;
   if (!v.driver && v.kind !== 'physical') return ['', 'Belum ada pengemudi'];
-  if (!inOk) return ['bad', 'Tidak ada input dari HP > 1 dtk → failsafe, mobil berhenti'];
+  if (!inOk) return ['bad', 'Tidak ada input dari HP lebih dari 1 detik. Failsafe menghentikan mobil.'];
   if (s.phase === 'countdown') return ['', 'Input ditahan selama hitung mundur'];
-  if (!outOk) return ['bad', 'Input masuk tapi tidak diterapkan ke mobil'];
-  return ['ok', v.kind === 'physical' ? 'Input → perintah ke RC fisik ✔' : 'Input → mobil sim 3D bergerak ✔'];
+  if (!outOk) return ['bad', 'Input masuk tetapi tidak diterapkan ke mobil'];
+  return ['ok', v.kind === 'physical' ? 'Perintah sampai ke RC fisik' : 'Mobil sim 3D mengikuti input'];
 }
 
 function render(s) {
   const n = s.net;
   const drivers = n.clients.filter(c => c.role === 'driver').length;
   $('tiles').innerHTML = [
-    [PHASE[s.phase], 'fase'], [drivers + ' / 3', 'pengemudi'], [n.clients.length, 'klien'],
-    [n.inPerSec + '/s', 'pesan masuk'], [n.outPerSec + '/s', 'pesan keluar'], [n.kbOutPerSec + ' kB/s', 'data keluar'],
-  ].map(([v, k]) => `<div class="tile"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
+    [PHASE[s.phase], 'Fase'], [drivers + ' / 3', 'Pengemudi'], [n.clients.length, 'Klien'],
+    [n.inPerSec + '/s', 'Pesan masuk'], [n.outPerSec + '/s', 'Pesan keluar'], [n.kbOutPerSec + ' kB/s', 'Data keluar'],
+  ].map(([v, k]) => `<div class="card"><div class="v">${v}</div><div class="k">${k}</div></div>`).join('');
 
   $('cards').innerHTML = s.vehicles.map(v => {
     const inOn = v.io.msSinceInput != null && v.io.msSinceInput < 250;
@@ -86,37 +109,40 @@ function render(s) {
     const online = !!v.driver || v.kind === 'physical';
     const rtt = n.clients.find(c => c.role === 'driver' && c.car === v.id)?.rtt;
     const [cls, text] = diagnose(v, s);
-    return `<div class="card"><h3><span class="sw" style="background:${COLORS[v.id]}"></span>${rc(v.id)}
-        <span style="font-size:12px;color:var(--muted);font-weight:400">${v.kind === 'physical' ? '🔌 RC fisik' : 'sim 3D'}</span></h3>
-      <div class="who">👤 ${v.driver ? esc(v.driver) : '(kosong)'}</div>
+    return `<div class="card"><h3><i class="dot" style="background:${COLORS[v.id]}"></i>${rc(v.id)}
+        <span class="badge">${v.kind === 'physical' ? icon('plug') + 'RC fisik' : 'Sim 3D'}</span></h3>
+      <div class="who">${icon('person')}${v.driver ? esc(v.driver) : 'Kosong'}</div>
       <div class="leds">
-        <div class="ledw"><div class="led ${online ? 'on' : ''}"></div>ONLINE</div>
-        <div class="ledw"><div class="led ${inOn ? 'in' : ''}"></div>INPUT</div>
-        <div class="ledw"><div class="led ${outOn ? 'out' : ''}"></div>OUTPUT</div>
+        <span><i class="dot ${online ? 'on' : ''}"></i>Online</span>
+        <span><i class="dot ${inOn ? 'in' : ''}"></i>Input</span>
+        <span><i class="dot ${outOn ? 'out' : ''}"></i>Output</span>
       </div>
-      <div class="row"><span>Gas / Belok</span><b>${v.input.throttle.toFixed(2)} / ${v.input.steer.toFixed(2)}</b></div>
-      <div class="row"><span>Input dari HP /dtk</span><b>${v.io.inPerSec}</b></div>
-      <div class="row"><span>Output ke mobil /dtk</span><b>${v.io.outPerSec}</b></div>
-      <div class="row"><span>Laju</span><b>${(Math.abs(v.speed) * 3.6).toFixed(1)} km/j</b></div>
-      <div class="row"><span>RTT HP</span><b>${rtt == null ? '–' : rtt + ' ms'}</b></div>
-      <div class="row"><span>Skor</span><b>${v.score}</b></div>
+      <dl>
+        <div><dt>Gas</dt><dd>${v.input.throttle.toFixed(2)}</dd></div>
+        <div><dt>Belok</dt><dd>${v.input.steer.toFixed(2)}</dd></div>
+        <div><dt>Input dari HP</dt><dd>${v.io.inPerSec}/s</dd></div>
+        <div><dt>Output ke mobil</dt><dd>${v.io.outPerSec}/s</dd></div>
+        <div><dt>Laju</dt><dd>${(Math.abs(v.speed) * 3.6).toFixed(1)} km/j</dd></div>
+        <div><dt>RTT HP</dt><dd style="${rtt > 200 ? 'color:var(--danger)' : ''}">${rtt == null ? '–' : rtt + ' ms'}</dd></div>
+        <div><dt>Skor</dt><dd>${v.score}</dd></div>
+      </dl>
       <div class="diag ${cls}">${text}</div></div>`;
   }).join('');
 
-  $('clients').innerHTML = '<tr style="color:var(--muted)"><td>Peran</td><td>Nama</td><td>Mobil</td><td>RTT</td><td>Masuk/s</td><td>Keluar/s</td></tr>' +
-    n.clients.map(c => `<tr><td>${esc(c.role)}</td><td>${esc(c.name)}</td><td>${c.car ? rc(c.car) : '–'}</td>
-      <td>${c.rtt == null ? '–' : c.rtt + ' ms'}</td><td>${c.inPerSec}</td><td>${c.outPerSec}</td></tr>`).join('');
+  $('clients').innerHTML = '<tr><th>Peran</th><th>Nama</th><th>Mobil</th><th class="n">RTT</th><th class="n">Masuk</th><th class="n">Keluar</th></tr>' +
+    n.clients.map(c => `<tr><td>${ROLE[c.role] || esc(c.role)}</td><td>${esc(c.name)}</td><td>${c.car ? rc(c.car) : '–'}</td>
+      <td class="n ${c.rtt > 200 ? 'bad' : ''}">${c.rtt == null ? '–' : c.rtt + ' ms'}</td><td class="n">${c.inPerSec}/s</td><td class="n">${c.outPerSec}/s</td></tr>`).join('');
 
   // peta: HP pengemudi (kiri) -> server (tengah) -> mobil (kanan)
   const ys = [40, 95, 150];
-  let svg = `<rect x="320" y="70" width="120" height="50" rx="10" fill="#20242e" stroke="#2a2e37"/><text x="380" y="92" text-anchor="middle" style="fill:#fff;font-weight:700">SERVER</text>
-    <text x="380" y="108" text-anchor="middle">${n.inPerSec} in · ${n.outPerSec} out /s</text>`;
+  let svg = `<rect class="srv" x="320" y="66" width="120" height="58" rx="12"/><text class="srv-t" x="380" y="91" text-anchor="middle">Server</text>
+    <text x="380" y="110" text-anchor="middle">${n.inPerSec}/s masuk</text>`;
   s.vehicles.forEach((v, i) => {
     const y = ys[i], inOn = v.io.msSinceInput != null && v.io.msSinceInput < 250, outOn = v.io.msSinceOutput != null && v.io.msSinceOutput < 250;
-    svg += `<line x1="150" y1="${y}" x2="320" y2="95" stroke="${inOn ? '#3f84d6' : '#2a2e37'}" stroke-width="${inOn ? 3 : 1.5}"/>
-      <line x1="440" y1="95" x2="610" y2="${y}" stroke="${outOn ? '#ffb454' : '#2a2e37'}" stroke-width="${outOn ? 3 : 1.5}"/>
-      <circle cx="140" cy="${y}" r="9" fill="${v.driver ? COLORS[v.id] : '#333'}"/><text x="125" y="${y + 4}" text-anchor="end">📱 ${v.driver ? esc(v.driver) : '–'}</text>
-      <circle cx="620" cy="${y}" r="9" fill="${COLORS[v.id]}"/><text x="636" y="${y + 4}">${rc(v.id)}${v.kind === 'physical' ? ' 🔌' : ''}</text>`;
+    svg += `<line x1="150" y1="${y}" x2="320" y2="95" style="stroke:${inOn ? 'var(--accent)' : 'var(--separator)'}" stroke-width="${inOn ? 3 : 1.5}"/>
+      <line x1="440" y1="95" x2="610" y2="${y}" style="stroke:${outOn ? 'var(--warn)' : 'var(--separator)'}" stroke-width="${outOn ? 3 : 1.5}"/>
+      <circle cx="140" cy="${y}" r="8" style="fill:${v.driver ? COLORS[v.id] : 'var(--fill)'}"/><text x="124" y="${y + 4}" text-anchor="end">${v.driver ? esc(v.driver) : 'Tanpa pengemudi'}</text>
+      <circle cx="620" cy="${y}" r="8" style="fill:${COLORS[v.id]}"/><text x="636" y="${y + 4}">${rc(v.id)}${v.kind === 'physical' ? ' (fisik)' : ''}</text>`;
   });
   $('map').innerHTML = svg;
 }

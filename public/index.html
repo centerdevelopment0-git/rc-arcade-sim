@@ -1,20 +1,36 @@
 <!doctype html><html lang="id"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1"><title>RC Arcade Sim</title>
-<style>body{margin:0;background:#0f1115;color:#e8eaed;font-family:system-ui,sans-serif;display:grid;place-items:center;min-height:100dvh;padding:24px;box-sizing:border-box}
-.card{background:#1a1d24;padding:26px;border-radius:14px;max-width:560px;width:100%}
-h2{margin:0 0 4px} p{color:#8a90a0;font-size:14px;margin-top:0}
-a.btn{display:block;margin:10px 0;padding:14px;border-radius:10px;background:#2b8a4e;color:#fff;text-decoration:none;font-weight:600}
-a.alt{background:#2a2e37} small{display:block;color:#b7bdc9;font-weight:400;font-size:12px;margin-top:3px}
-.qrs{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-top:16px;padding-top:16px;border-top:1px solid #2a2e37}
-.qrs a{color:#fff;text-decoration:none;text-align:center;font-weight:700;font-size:14px}
-.qrs .qr{background:#fff;border-radius:8px;line-height:0;margin-bottom:6px}</style></head>
-<body><div class="card"><h2>🏁 RC Arcade Sim</h2>
-<p>Balapan 3D multiplayer: HP → server → mobil (sim 3D sekarang, RC fisik nanti).</p>
-<a class="btn" href="/race3d.html">🖥️ Layar arena (laptop)<small>Arena, papan skor, tombol mulai, kisi POV semua pemain</small></a>
-<a class="btn alt" href="/monitor.html">📡 Dashboard koneksi<small>Input & output per mobil, RTT, beban server</small></a>
-<a class="btn alt" href="/race3d.html?drive">📱 Setir dari perangkat ini<small>Pilih RC sendiri</small></a>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>RC Arcade Sim</title>
+<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f2f2f7">
+<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#000000">
+<link rel="stylesheet" href="/ui.css">
+<style>
+  main { max-width: 600px; margin: 0 auto; padding: max(48px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) 48px max(16px, env(safe-area-inset-left)); }
+  h1 { font-size: 34px; font-weight: 700; letter-spacing: .01em; margin: 0 16px; }
+  .lead { color: var(--label-2); margin: 8px 16px 0; }
+  .qrs { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+  .qrs a { background: var(--surface); border-radius: var(--r-lg); padding: 12px; text-decoration: none; color: inherit;
+           display: grid; gap: 8px; justify-items: center; font-weight: 600; }
+  .qrs .qr { width: 100%; background: #fff; border-radius: var(--r-sm); line-height: 0; }
+  .qrs span { display: inline-flex; align-items: center; gap: 8px; }
+</style></head>
+<body><main>
+<h1>RC Arcade Sim</h1>
+<p class="lead">Balapan 3D multiplayer. HP mengirim kemudi ke server, server menggerakkan mobil sim 3D. Nanti mobil RC fisik.</p>
+
+<h2 class="section-title">Buka</h2>
+<ul class="list">
+  <li><a class="row" href="/race3d.html"><span class="tile" style="background:var(--blue)"><svg class="i"><use href="/icons.svg#display"/></svg></span>
+    <span class="grow">Layar arena<span class="sub">Papan skor, tombol mulai, POV semua pemain</span></span><svg class="i chev"><use href="/icons.svg#chevron"/></svg></a></li>
+  <li><a class="row" href="/monitor.html"><span class="tile" style="background:var(--orange)"><svg class="i"><use href="/icons.svg#antenna"/></svg></span>
+    <span class="grow">Dashboard koneksi<span class="sub">Input dan output per mobil, RTT, beban server</span></span><svg class="i chev"><use href="/icons.svg#chevron"/></svg></a></li>
+  <li><a class="row" href="/race3d.html?drive"><span class="tile" style="background:var(--green)"><svg class="i"><use href="/icons.svg#phone"/></svg></span>
+    <span class="grow">Setir dari perangkat ini<span class="sub">Pilih mobil sendiri</span></span><svg class="i chev"><use href="/icons.svg#chevron"/></svg></a></li>
+</ul>
+
+<h2 class="section-title">Scan untuk menyetir</h2>
 <div class="qrs" id="qrs"></div>
-</div>
+<p class="footnote">Setiap kode langsung membuka satu mobil. Pegang HP dalam posisi lanskap.</p>
+</main>
 <script src="/vendor/qrcode.js"></script>
 <script>
 // QR per RC: scan dari HP langsung masuk ke mobil itu. Kalau dibuka via localhost, pakai IP WiFi laptop.
@@ -23,12 +39,11 @@ a.alt{background:#2a2e37} small{display:block;color:#b7bdc9;font-weight:400;font
   if (['localhost','127.0.0.1'].includes(location.hostname)) {
     try { const h = await (await fetch('/healthz')).json(); if (h.lan && h.lan[0]) base = h.lan[0]; } catch {}
   }
-  const colors = ['#3f84d6', '#2ee98b', '#ff8a3d'];
   document.getElementById('qrs').innerHTML = [1, 2, 3].map(i => {
     const url = `${base}/race3d.html?drive&car=car${i}`;
     let svg = '';
     if (typeof qrcode !== 'undefined') { const q = qrcode(0, 'M'); q.addData(url); q.make(); svg = q.createSvgTag({ cellSize:3, margin:2, scalable:true }); }
-    return `<a href="${url}"><div class="qr">${svg}</div><span style="color:${colors[i - 1]}">📱 RC${i}</span></a>`;
+    return `<a href="${url}" aria-label="Setir RC${i}"><div class="qr">${svg}</div><span><i class="dot" style="background:var(--rc${i})"></i>RC${i}</span></a>`;
   }).join('');
 })();
 </script>
