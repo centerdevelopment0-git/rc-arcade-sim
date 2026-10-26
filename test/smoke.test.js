@@ -34,7 +34,7 @@ async function waitFor(msgs, pred, ms = 2000) {
 }
 
 test('halaman & health check tersaji, halaman arena lama sudah tidak ada', async () => {
-  for (const p of ['/', '/race3d.html', '/monitor.html', '/vendor/qrcode.js', '/shared/physics.js', '/vendor/three/three.module.min.js'])
+  for (const p of ['/', '/race3d.html', '/monitor.html', '/ui.css', '/icons.svg', '/vendor/qrcode.js', '/shared/physics.js', '/vendor/three/three.module.min.js'])
     assert.equal((await fetch(HTTP + p)).status, 200, p);
   for (const p of ['/arena.html', '/controller.html', '/keyboard.html', '/car.html', '/rc-state.js'])
     assert.equal((await fetch(HTTP + p)).status, 404, p);

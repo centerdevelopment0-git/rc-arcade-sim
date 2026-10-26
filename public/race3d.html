@@ -1,138 +1,191 @@
 <!doctype html>
-<html lang="id">
+<html lang="id" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-<title>Balapan 3D — RC Arcade Sim</title>
+<!-- maximum-scale: pengecualian sadar untuk layar balap, cubit-zoom saat menyetir membuat kontrol hilang dari jempol -->
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>Balapan 3D</title>
+<link rel="stylesheet" href="/ui.css">
 <style>
-  :root { --bg:#0f1115; --panel:rgba(20,23,30,.82); --edge:#2a2e37; --text:#e8eaed; --muted:#9aa0b0;
-          --ok:#2ee98b; --accent:#3f84d6; --warn:#ffb454; }
-  * { box-sizing:border-box; -webkit-user-select:none; user-select:none; }
-  html,body { margin:0; height:100%; overflow:hidden; background:var(--bg); color:var(--text); font-family:system-ui,sans-serif; }
-  canvas#view { position:fixed; inset:0; width:100vw; height:100dvh; display:block; touch-action:none; }
-  .hud { position:fixed; background:var(--panel); border:1px solid var(--edge); border-radius:12px; padding:8px 12px; font-size:13px; }
-  .hud b { color:#fff; }
-  #stats { top:10px; left:10px; line-height:1.5; }
-  #board { top:10px; right:10px; min-width:220px; }
-  #board table { border-collapse:collapse; width:100%; }
-  #board td { padding:3px 6px; border-top:1px solid #20242e; }
-  #board .sw { display:inline-block; width:10px; height:10px; border-radius:2px; margin-right:6px; }
-  #admin { bottom:10px; left:10px; display:flex; gap:8px; align-items:center; }
-  #join { bottom:10px; right:10px; display:flex; gap:12px; align-items:center; }
-  #join #qr { width:120px; background:#fff; border-radius:8px; line-height:0; }
-  #join code { display:block; font-size:11px; color:#8ab4ff; word-break:break-all; max-width:220px; margin-top:4px; }
-  button { background:#20242e; color:#fff; border:1px solid var(--edge); border-radius:9px; padding:8px 14px; font-size:14px; cursor:pointer; }
-  button.primary { background:var(--accent); border-color:var(--accent); }
-  #center { position:fixed; left:50%; top:38%; transform:translate(-50%,-50%); font-size:64px; font-weight:800;
-            text-shadow:0 4px 18px rgba(0,0,0,.6); pointer-events:none; text-align:center; }
-  #toast { position:fixed; left:50%; top:16%; transform:translateX(-50%); font-size:22px; font-weight:700; color:var(--ok);
-           text-shadow:0 2px 10px rgba(0,0,0,.7); pointer-events:none; opacity:0; transition:opacity .25s; }
-  /* pemilih mobil (mode setir) */
-  #pick { position:fixed; inset:0; display:grid; place-items:center; background:rgba(10,12,16,.9); }
-  #pick .card { background:#1a1d24; border:1px solid var(--edge); border-radius:14px; padding:22px; width:min(92vw,380px); }
-  #pick h2 { margin:0 0 10px; font-size:18px; }
-  #pick .cars { display:flex; gap:10px; margin:12px 0; }
-  #pick .cars button { flex:1; padding:14px 0; font-size:16px; font-weight:700; }
-  #pick .cars button:disabled { opacity:.35; }
-  #pick input { width:100%; background:#20242e; color:#fff; border:1px solid var(--edge); border-radius:8px; padding:9px; font-size:15px; }
-  #pick small { color:var(--muted); display:block; margin-top:10px; line-height:1.4; }
-  /* ---- mode setir (HP landscape), gaya arcade: HUD besar, ◀ ▶ kiri bawah, pedal gas kanan bawah, skill di atas gas ---- */
-  body.drive { -webkit-touch-callout:none; }
-  .hudTxt { position:fixed; pointer-events:none; font-weight:800; font-style:italic; text-shadow:0 2px 6px rgba(0,0,0,.85); }
-  #hudL { top:6px; left:12px; }
-  #hudL .pos { font-size:54px; line-height:1; color:#ffd23f; } #hudL .pos small { font-size:22px; color:#fff; }
-  #hudL .ln { font-size:16px; margin-top:2px; } #hudL .ln b { color:#ffd23f; }
-  #minimap { position:fixed; top:126px; left:8px; border-radius:10px; border:1px solid var(--edge); background:rgba(20,23,30,.6); pointer-events:none; }
-  #hudR { top:6px; right:12px; text-align:right; }
-  #hudR .spd { font-size:46px; line-height:1; } #hudR .unit { font-size:16px; }
-  #spdBar { width:160px; height:9px; margin:4px 0 0 auto; border-radius:5px; background:rgba(255,255,255,.22); overflow:hidden; transform:skewX(-20deg); }
-  #spdBar i { display:block; height:100%; width:0; background:linear-gradient(90deg,#2ee98b,#ffd23f 70%,#ff6b6b); }
-  #hPu { font-size:15px; margin-top:4px; min-height:18px; }
-  #topBtns { position:fixed; top:96px; right:10px; display:flex; gap:6px; }
-  #topBtns button { padding:5px 9px; font-size:12px; background:rgba(20,23,30,.75); }
-  .ctl { position:fixed; touch-action:none; padding:0; color:#fff; font-size:34px; font-weight:800; border-radius:18px;
-         border:3px solid rgba(255,255,255,.55); background:rgba(20,23,30,.45); display:grid; place-items:center; }
-  .ctl.held { background:rgba(63,132,214,.8); border-color:#fff; }
-  #btnL { left:14px; bottom:16px; width:min(22vh,92px); height:min(22vh,92px); }
-  #btnR { left:calc(26px + min(22vh,92px)); bottom:16px; width:min(22vh,92px); height:min(22vh,92px); }
-  #btnGas { right:16px; bottom:16px; width:min(24vh,100px); height:min(34vh,136px); border-radius:22px; font-size:15px;
-            background:rgba(46,233,139,.3); border-color:#2ee98b; }
-  #btnGas.held { background:rgba(46,233,139,.85); }
-  #btnBrake { right:calc(28px + min(24vh,100px)); bottom:16px; width:min(18vh,72px); height:min(18vh,72px); font-size:13px;
-              background:rgba(255,107,107,.25); border-color:#ff6b6b; }
-  #btnBrake.held { background:rgba(255,107,107,.8); }
-  #skills { position:fixed; right:16px; bottom:calc(28px + min(34vh,136px)); display:flex; gap:10px; touch-action:none; }
-  .skill { width:min(15vh,56px); height:min(15vh,56px); border-radius:50%; background:#e0553a; border:3px solid rgba(255,255,255,.55); padding:0;
-           font-size:22px; position:relative; touch-action:none; }
-  .skill:disabled { opacity:.38; }
-  .skill.on { background:#2b8a4e; box-shadow:0 0 14px #2ee98b; }
-  .skill .n { position:absolute; right:-4px; top:-4px; background:#111; border-radius:9px; font-size:11px; padding:1px 5px; }
+  html, body { height: 100%; overflow: hidden; overscroll-behavior: none; }
+  body { font-size: 15px; }
+  canvas#view { position: fixed; inset: 0; width: 100vw; height: 100dvh; display: block; touch-action: none; }
+  :root { --sl: max(12px, env(safe-area-inset-left)); --sr: max(12px, env(safe-area-inset-right));
+          --st: max(12px, env(safe-area-inset-top)); --sb: max(12px, env(safe-area-inset-bottom)); }
+  .hud { position: fixed; border-radius: var(--r-lg); padding: 12px 16px; }
+  .chip { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
+  .chip .k { color: var(--label-2); font-weight: 400; }
+  .num { font-variant-numeric: tabular-nums; }
+  .btn.sm { min-height: 44px; padding: 0 16px; font-size: 15px; color: var(--label); }
+  table { border-collapse: collapse; width: 100%; }
+  th { text-align: left; font-weight: 400; font-size: 13px; color: var(--label-2); padding: 0 8px 4px; }
+  td { padding: 6px 8px; box-shadow: inset 0 .5px 0 var(--separator); }
+  td.n, th.n { text-align: right; font-variant-numeric: tabular-nums; }
+
+  /* koneksi: selalu terlihat saat putus */
+  #conn { position: fixed; top: var(--st); left: 50%; transform: translateX(-50%); color: var(--warn); z-index: 5; }
+
+  /* ---- layar arena (laptop) ---- */
+  #stats { top: var(--st); left: var(--sl); display: flex; align-items: center; gap: 12px; }
+  #stats b { font-size: 17px; }
+  #traffic { top: calc(var(--st) + 68px); left: var(--sl); width: 280px; font-size: 13px; }
+  #traffic .head { display: flex; gap: 12px; color: var(--label-2); margin: 4px 0 8px; }
+  #traffic .head b { color: var(--label); font-variant-numeric: tabular-nums; }
+  #traffic .row { display: flex; align-items: center; gap: 8px; min-height: 0; padding: 4px 0; }
+  #traffic .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #traffic .rtt { width: 52px; text-align: right; color: var(--label-2); font-variant-numeric: tabular-nums; }
+  #traffic .rtt.bad { color: var(--danger); }
+  #traffic .bar { height: 6px; border-radius: 3px; background: var(--accent); }
+  #traffic .rate { width: 36px; text-align: right; color: var(--label-2); font-variant-numeric: tabular-nums; }
+  #board { top: var(--st); right: var(--sr); min-width: 300px; padding: 12px 8px; }
+  #admin { bottom: var(--sb); left: var(--sl); display: flex; gap: 8px; align-items: center; padding: 8px; border-radius: 999px; }
+  #adminInfo { padding: 0 12px 0 4px; color: var(--label-2); }
+  #join { bottom: var(--sb); right: var(--sr); display: flex; gap: 16px; align-items: center; }
+  #join #qr { width: 112px; background: #fff; border-radius: var(--r-sm); line-height: 0; }
+  #join code { display: block; font-size: 13px; color: var(--accent); word-break: break-all; max-width: 220px; margin-top: 4px; }
+  .cellLabel { position: fixed; pointer-events: none; }
+  body.grid #board, body.grid #traffic, body.grid #chat, body.grid #join { display: none !important; }
+
+  /* hitung mundur dan hasil */
+  #center { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); pointer-events: none; text-align: center; }
+  #center .count { font: 800 120px/1 var(--font-num); text-shadow: 0 4px 24px rgba(0,0,0,.45); font-variant-numeric: tabular-nums; }
+  #center .result { border-radius: var(--r-lg); padding: 20px; min-width: 320px; text-align: left; }
+  #center .result h2 { font-size: 28px; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+  #center .result h2 .i { color: var(--yellow); }
+  #center .result p { margin: 4px 0 12px; color: var(--label-2); }
+  #center .result td { font-size: 17px; }
+  #toast { position: fixed; left: 50%; top: calc(var(--st) + 52px); transform: translate(-50%, -8px); height: 44px; padding: 0 20px; font-size: 15px;
+           border-radius: 999px; pointer-events: none; opacity: 0; transition: opacity .2s var(--ease), transform .2s var(--ease); }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* pemilih mobil (mode setir): sheet */
+  #pick { position: fixed; inset: 0; display: grid; place-items: center; background: rgba(0,0,0,.5); overflow-y: auto; padding: var(--st) var(--sr) var(--sb) var(--sl); }
+  #pick .sheet { background: var(--surface); border-radius: var(--r-lg); padding: 20px; width: min(100%, 520px); }
+  #pick h2 { font-size: 22px; font-weight: 700; }
+  #pick label { display: block; font-size: 13px; color: var(--label-2); margin: 12px 0 4px; }
+  #pick input { width: 100%; min-height: 44px; background: var(--fill); color: var(--label); border: 0; border-radius: var(--r-md); padding: 0 12px; font: 17px var(--font); }
+  #pick .cars { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  #pick .cars button { display: grid; gap: 4px; justify-items: start; text-align: left; padding: 12px; min-height: 72px; border: 0; border-radius: var(--r-md);
+                       background: var(--surface-2); transition: transform .15s var(--ease); }
+  #pick .cars button:active { transform: scale(.96); }
+  #pick .cars button:disabled { opacity: .35; }
+  #pick .cars b { display: inline-flex; align-items: center; gap: 8px; }
+  #pick .cars small { font-weight: 400; font-size: 13px; color: var(--label-2); }
+  #pick .help { font-size: 13px; color: var(--label-2); margin: 12px 0 0; line-height: 1.45; }
+
+  /* ---- mode setir (HP lanskap), konsep Lapangan: status kiri atas, peta mini, arah kiri bawah, GAS kanan bawah, skill di atas GAS ---- */
+  body.drive { -webkit-touch-callout: none; }
+  #hudL { top: var(--st); left: var(--sl); display: grid; gap: 8px; justify-items: start; pointer-events: none; }
+  #hudL .top { display: flex; align-items: center; gap: 16px; border-radius: var(--r-lg); padding: 8px 16px; }
+  #hudL .pos { font: 800 54px/1 var(--font-num); font-variant-numeric: tabular-nums; }
+  #hudL .pos small { font-size: 20px; color: var(--label-2); font-weight: 600; }
+  #hudL .lt { display: grid; gap: 2px; font-size: 15px; font-weight: 600; }
+  #hudL .chips { display: flex; gap: 8px; }
+  #minimap { position: fixed; top: calc(var(--st) + 128px); left: var(--sl); border-radius: var(--r-md); pointer-events: none; }
+  #hudR { top: var(--st); right: var(--sr); text-align: right; pointer-events: none; padding: 8px 16px; }
+  #hudR .spd { font: 800 44px/1 var(--font-num); font-variant-numeric: tabular-nums; }
+  #hudR .unit { font-size: 15px; font-weight: 600; color: var(--label-2); }
+  #spdBar { width: 160px; height: 6px; margin: 8px 0 0 auto; border-radius: 3px; background: var(--fill); overflow: hidden; }
+  #spdBar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--yellow) 70%, var(--red)); }
+  #hPu { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; min-height: 18px; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
+  #topBtns { position: fixed; top: calc(var(--st) + 100px); right: var(--sr); display: flex; gap: 8px; }
+  .ctl { position: fixed; touch-action: none; padding: 0; color: var(--label); font: 700 17px var(--font); display: grid; place-items: center;
+         border: 0; transition: transform .1s var(--ease), background-color .1s var(--ease); }
+  .ctl .i { width: 40px; height: 40px; stroke-width: 2.5; }
+  .ctl.held { transform: scale(.96); background: rgba(255,255,255,.85); color: #000; }
+  #btnL, #btnR { bottom: var(--sb); width: min(22vh, 92px); height: min(22vh, 92px); border-radius: 50%; }
+  #btnL { left: var(--sl); }
+  #btnR { left: calc(var(--sl) + 12px + min(22vh, 92px)); }
+  #btnGas { right: var(--sr); bottom: var(--sb); width: min(24vh, 100px); height: min(34vh, 136px); border-radius: 999px;
+            background: color-mix(in srgb, var(--ok) 35%, transparent); }
+  #btnGas.held { background: var(--ok); color: #000; }
+  #btnBrake { right: calc(var(--sr) + 12px + min(24vh, 100px)); bottom: var(--sb); width: min(18vh, 72px); height: min(18vh, 72px); border-radius: 50%;
+              font-size: 15px; background: color-mix(in srgb, var(--danger) 35%, transparent); }
+  #btnBrake.held { background: var(--danger); color: #fff; }
+  #skills { position: fixed; right: var(--sr); bottom: calc(var(--sb) + 12px + min(34vh, 136px)); display: flex; gap: 12px; touch-action: none; }
+  .skill { width: min(15vh, 56px); height: min(15vh, 56px); min-width: 44px; min-height: 44px; border-radius: 50%; border: 0; padding: 0;
+           color: var(--c); position: relative; touch-action: none; display: grid; place-items: center; transition: transform .1s var(--ease); }
+  .skill .i { width: 26px; height: 26px; }
+  .skill:active:not(:disabled) { transform: scale(.96); }
+  .skill:disabled { opacity: .35; }
+  .skill.on { background: var(--c); color: #000; }
+  .skill .n { position: absolute; right: -4px; top: -4px; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--surface-2);
+              color: var(--label); font: 600 12px/20px var(--font); font-variant-numeric: tabular-nums; }
+  body.offline .ctl, body.offline .skill { opacity: .35; }
+
   /* chat: bar bawah (HP) / panel kanan (laptop) */
-  #chat { display:flex; flex-direction:column; padding:6px; gap:4px; }
-  body.drive #chat { left:calc(40px + 2 * min(22vh,92px)); right:calc(44px + min(24vh,100px) + min(18vh,72px)); bottom:10px;
-                     max-width:460px; margin:0 auto; background:rgba(20,23,30,.6); }
-  body.drive #chatLog { max-height:3.2em; font-size:11px; }
-  body.watch #chat { top:190px; right:10px; height:220px; width:min(30vw,260px); }
-  #chatLog { flex:1; overflow-y:auto; font-size:12px; line-height:1.35; -webkit-user-select:text; user-select:text; }
-  #chatLog div { margin-bottom:2px; word-wrap:break-word; }
-  #chatForm { display:flex; gap:4px; }
-  #chatInput { flex:1; min-width:0; background:#20242e; color:#fff; border:1px solid var(--edge); border-radius:7px; padding:6px; font-size:13px; -webkit-user-select:text; user-select:text; }
-  #chatForm button { padding:5px 9px; font-size:13px; }
-  #rotate { position:fixed; inset:auto 0 40% 0; text-align:center; font-size:15px; color:#ffd23f; pointer-events:none; text-shadow:0 2px 6px #000; }
-  @media (orientation:landscape) { #rotate { display:none; } }
-  /* traffic monitor (layar laptop) */
-  .cellLabel { position:fixed; font-size:13px; font-weight:700; padding:3px 9px; border-radius:8px; background:rgba(20,23,30,.8); pointer-events:none; }
-  body.grid #board, body.grid #traffic, body.grid #chat, body.grid #join { display:none !important; }
-  #traffic { top:56px; left:10px; width:250px; font-size:12px; }
-  #traffic .row { display:flex; align-items:center; gap:6px; margin:3px 0; }
-  #traffic .bar { height:7px; background:#3f84d6; border-radius:3px; }
-  #traffic .nm { width:92px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .hidden { display:none !important; }
+  #chat { display: flex; flex-direction: column; padding: 8px; gap: 8px; }
+  body.drive #chat { left: calc(var(--sl) + 28px + 2 * min(22vh, 92px)); right: calc(var(--sr) + 28px + min(24vh, 100px) + min(18vh, 72px));
+                     bottom: var(--sb); max-width: 460px; margin: 0 auto; }
+  body.drive #chatLog { max-height: 2.9em; }
+  body.watch #chat { top: calc(var(--st) + 200px); right: var(--sr); height: 240px; width: min(30vw, 300px); }
+  #chatLog { flex: 1; overflow-y: auto; font-size: 13px; line-height: 1.4; padding: 0 4px; -webkit-user-select: text; user-select: text; }
+  #chatLog div { word-wrap: break-word; }
+  #chatForm { display: flex; gap: 8px; }
+  #chatInput { flex: 1; min-width: 0; min-height: 44px; background: var(--fill); color: var(--label); border: 0; border-radius: 999px; padding: 0 16px;
+               font: 16px var(--font); -webkit-user-select: text; user-select: text; }
+  #chatForm button { width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; background: var(--accent); color: #fff; display: grid; place-items: center; }
+
+  #rotate { position: fixed; inset: 0; display: grid; place-content: center; justify-items: center; gap: 12px; text-align: center; background: rgba(0,0,0,.7);
+            font-size: 17px; font-weight: 600; z-index: 10; }
+  #rotate .i { width: 56px; height: 56px; stroke-width: 1.5; }
+  @media (orientation: landscape) { #rotate { display: none; } }
 </style>
 </head>
 <body>
 <canvas id="view"></canvas>
 
-<div id="stats" class="hud hidden">menyambung…</div>
-<div id="hudL" class="hudTxt drv hidden"><div class="pos" id="hPos">–</div><div class="ln" id="hLap"></div><div class="ln" id="hTime"></div><div class="ln" id="hInfo">menyambung…</div></div>
-<canvas id="minimap" class="drv hidden" width="150" height="100"></canvas>
-<div id="hudR" class="hudTxt drv hidden"><div class="spd"><span id="hSpd">0</span><span class="unit"> km/j</span></div><div id="spdBar"><i></i></div><div id="hPu"></div></div>
-<div id="topBtns" class="drv hidden"><button id="camBtn">🎥 Kap mobil</button><button id="swapBtn">🔄 Ganti RC</button></div>
-<div id="traffic" class="hud hidden"></div>
-<div id="chat" class="hud hidden"><div id="chatLog"></div>
-  <form id="chatForm"><input id="chatInput" maxlength="80" placeholder="Ketik pesan…" autocomplete="off"><button>➤</button></form></div>
-<div id="board" class="hud hidden"></div>
-<div id="admin" class="hud hidden">
-  <button class="primary" id="startBtn">▶ Mulai balapan</button>
-  <button id="resetBtn">↺ Reset</button>
-  <button id="viewBtn">🎥 Lihat POV 3 pemain</button>
-  <span id="adminInfo" style="color:var(--muted)"></span>
+<div id="conn" class="chip material hidden" role="status">Koneksi putus. Menyambung ulang...</div>
+<div id="stats" class="hud material hidden"><b>Balapan 3D</b><span class="muted" id="sPhase">Menyambung...</span><span class="num" id="sTime"></span></div>
+<div id="hudL" class="drv hidden">
+  <div class="top material"><div class="pos" id="hPos">–</div><div class="lt"><span id="hLap"></span><span class="num" id="hTime"></span></div></div>
+  <div class="chips"><span class="chip material" id="hCar"></span><span class="chip material num" id="hScore"></span><span class="chip material" id="hNext"></span></div>
 </div>
-<div id="join" class="hud hidden">
+<canvas id="minimap" class="drv hidden material" width="150" height="100" aria-hidden="true"></canvas>
+<div id="hudR" class="hud material drv hidden"><div><span class="spd" id="hSpd">0</span><span class="unit"> km/j</span></div><div id="spdBar"><i></i></div><div id="hPu"><span id="hPuIcon"></span><span id="hPuText"></span></div></div>
+<div id="topBtns" class="drv hidden">
+  <button class="btn sm material" id="camBtn"><svg class="i"><use href="/icons.svg#camera"/></svg><span>Kap mobil</span></button>
+  <button class="btn sm material" id="swapBtn"><svg class="i"><use href="/icons.svg#swap"/></svg>Ganti RC</button>
+</div>
+<div id="traffic" class="hud material hidden"></div>
+<div id="chat" class="hud material hidden"><div id="chatLog" aria-live="polite"></div>
+  <form id="chatForm"><input id="chatInput" maxlength="80" placeholder="Kirim pesan" autocomplete="off" aria-label="Pesan chat">
+    <button aria-label="Kirim"><svg class="i"><use href="/icons.svg#send"/></svg></button></form></div>
+<div id="board" class="hud material hidden"></div>
+<div id="admin" class="hud material hidden">
+  <button class="btn filled" id="startBtn"><svg class="i"><use href="/icons.svg#play"/></svg>Mulai balapan</button>
+  <button class="btn" id="resetBtn"><svg class="i"><use href="/icons.svg#reset"/></svg>Reset</button>
+  <button class="btn" id="viewBtn"><svg class="i"><use href="/icons.svg#grid"/></svg><span>Lihat POV pemain</span></button>
+  <span id="adminInfo"></span>
+</div>
+<div id="join" class="hud material hidden">
   <div id="qr"></div>
-  <div><b>📱 Scan untuk menyetir</b><br><span style="color:var(--muted)">HP landscape, pilih RC1–RC3</span><code id="joinUrl"></code></div>
+  <div><b>Scan untuk menyetir</b><br><span class="muted">Pegang HP lanskap, lalu pilih mobil</span><code id="joinUrl"></code></div>
 </div>
 <div id="cellLabels"></div>
 <div id="center"></div>
-<div id="toast"></div>
+<div id="toast" class="chip material" role="status"></div>
 
-<div id="pick" class="hidden"><div class="card">
-  <h2>🏎️ Pilih mobil</h2>
-  <input id="pname" maxlength="16" placeholder="Nama kamu">
+<div id="pick" class="hidden"><div class="sheet" role="dialog" aria-labelledby="pickTitle">
+  <h2 id="pickTitle">Pilih mobil</h2>
+  <label for="pname">Nama</label>
+  <input id="pname" maxlength="16" placeholder="Nama kamu" autocomplete="nickname">
   <div class="cars" id="cars"></div>
-  <small>HP landscape. ◀ ▶ kiri bawah = belok, pedal kanan bawah = GAS (kecil = rem/mundur), tombol skill di atas gas. Boleh ditekan bersamaan.<br>
-    Laptop: W/S gas, A/D belok, Q boost, E shield, H klakson, Enter chat. Lewati gerbang <b>berurutan</b>; ⚡ boost & 🛡️ shield di gerbang tertentu. Pemenang = <b>skor tertinggi</b>.</small>
+  <p class="help">Tahan tombol kiri dan kanan untuk belok, GAS untuk maju, REM untuk mengerem atau mundur. Semua bisa ditekan bersamaan.
+    Lewati gerbang sesuai urutan. Gerbang tertentu memberi boost atau shield. Pemenangnya skor tertinggi.<br>
+    Di laptop: W dan S untuk gas, A dan D untuk belok, Q boost, E shield, H klakson, Enter untuk chat.</p>
 </div></div>
 
-<button class="ctl drv hidden" id="btnL" data-k="left">◀</button>
-<button class="ctl drv hidden" id="btnR" data-k="right">▶</button>
+<button class="ctl material drv hidden" id="btnL" data-k="left" aria-label="Belok kiri"><svg class="i"><use href="/icons.svg#left"/></svg></button>
+<button class="ctl material drv hidden" id="btnR" data-k="right" aria-label="Belok kanan"><svg class="i"><use href="/icons.svg#right"/></svg></button>
 <button class="ctl drv hidden" id="btnBrake" data-k="down">REM</button>
 <button class="ctl drv hidden" id="btnGas" data-k="up">GAS</button>
-<div id="rotate" class="drv hidden">↻ Putar HP ke landscape</div>
+<div id="rotate" class="drv hidden"><svg class="i"><use href="/icons.svg#phone-landscape"/></svg>Putar HP ke lanskap</div>
 <div id="skills" class="drv hidden">
-  <button class="skill" data-skill="boost" title="Boost (Q)">⚡<span class="n">0</span></button>
-  <button class="skill" data-skill="shield" title="Shield (E)">🛡️<span class="n">0</span></button>
-  <button class="skill" data-skill="horn" title="Klakson (H)">📣</button>
+  <button class="skill material" data-skill="boost" aria-label="Boost (Q)" style="--c:var(--boost)"><svg class="i"><use href="/icons.svg#bolt"/></svg><span class="n">0</span></button>
+  <button class="skill material" data-skill="shield" aria-label="Shield (E)" style="--c:var(--shield)"><svg class="i"><use href="/icons.svg#shield"/></svg><span class="n">0</span></button>
+  <button class="skill material" data-skill="horn" aria-label="Klakson (H)" style="--c:var(--label)"><svg class="i"><use href="/icons.svg#horn"/></svg></button>
 </div>
 
 <script src="/vendor/qrcode.js"></script>
@@ -143,7 +196,11 @@ import { CAR } from '/shared/physics.js';
 
 const params = new URLSearchParams(location.search);
 const DRIVE = params.has('drive');           // tanpa ?drive = layar penonton (laptop)
-const COLORS = { car1:'#3f84d6', car2:'#2ee98b', car3:'#ff8a3d' };
+const css = getComputedStyle(document.documentElement), tok = n => css.getPropertyValue(n).trim();   // token ui.css untuk three.js dan canvas
+const COLORS = { car1:tok('--rc1'), car2:tok('--rc2'), car3:tok('--rc3') };
+const PU_ICON = { boost:'bolt', shield:'shield' };
+const icon = name => `<svg class="i"><use href="/icons.svg#${name}"/></svg>`;
+const rcName = id => id.toUpperCase().replace('CAR', 'RC');
 const $ = id => document.getElementById(id);
 const esc = t => String(t ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));   // nama pemain = teks bebas
 
@@ -154,10 +211,11 @@ let last = null, offset = 0;                  // offset = jam server - jam lokal
 function connect() {
   ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/race`);
   ws.onopen = () => {
+    setConn(true);
     if (!DRIVE) ws.send(JSON.stringify({ type:'join', role:'spectator' }));
     else if (myCar) ws.send(JSON.stringify({ type:'join', role:'driver', car:myCar, name:myName }));
   };
-  ws.onclose = () => { $('stats').textContent = $('hInfo').textContent = 'putus — menyambung ulang…'; setTimeout(connect, 1000); };
+  ws.onclose = () => { setConn(false); setTimeout(connect, 1000); };
   ws.onmessage = e => {
     const m = JSON.parse(e.data);
     if (m.type === 'welcome') { if (!arena) { arena = m.arena; rules = m.rules; buildArena(); } $('chatLog').textContent = ''; (m.chat || []).forEach(addChat); }
@@ -165,14 +223,15 @@ function connect() {
       offset = m.t - Date.now(); last = m; snaps.push(m); if (snaps.length > 30) snaps.shift();
       if (DRIVE && !myCar) renderPicker(m);
     }
-    else if (m.type === 'denied') { myCar = null; $('pick').classList.remove('hidden'); toast((m.car||'').toUpperCase()+' sedang dipakai '+(m.driver||'orang lain'), '#ff6b6b'); }
+    else if (m.type === 'denied') { myCar = null; $('pick').classList.remove('hidden'); toast(`${rcName(m.car || '')} sedang dipakai ${m.driver || 'orang lain'}`, 'person', 'var(--danger)'); }
     else if (m.type === 'joined') { $('pick').classList.add('hidden'); showDriveUI(true); }
     else if (m.type === 'checkpointPassed') onCheckpoint(m);
-    else if (m.type === 'skillUsed') { if (!DRIVE || m.vehicleId === myCar) toast(`${DRIVE ? '' : m.vehicleId.toUpperCase() + ' '}${rules.powerUps[m.skill].icon} ${rules.powerUps[m.skill].label} aktif!`, '#ffd23f'); }
-    else if (m.type === 'horn') { beep(); if (m.vehicleId !== myCar) toast(`📣 ${m.vehicleId.toUpperCase().replace('CAR', 'RC')} klakson!`, '#ffd23f'); }
+    else if (m.type === 'skillUsed') { if (!DRIVE || m.vehicleId === myCar) { toast(`${DRIVE ? '' : rcName(m.vehicleId) + ' '}${rules.powerUps[m.skill].label} aktif`, PU_ICON[m.skill], `var(--${m.skill})`); if (DRIVE) navigator.vibrate?.(20); } }
+    else if (m.type === 'horn') { beep(); if (m.vehicleId !== myCar) toast(`${rcName(m.vehicleId)} membunyikan klakson`, 'horn', 'var(--label)'); }
     else if (m.type === 'chat') addChat(m);
   };
 }
+const setConn = ok => { $('conn').classList.toggle('hidden', ok); document.body.classList.toggle('offline', !ok); };
 connect();
 
 // ---------------- three.js: scene ----------------
@@ -226,7 +285,7 @@ function buildArena() {
     let icon = null;
     if (g.powerUp) {
       icon = new THREE.Mesh(new THREE.OctahedronGeometry(.14), new THREE.MeshStandardMaterial({
-        color: g.powerUp === 'boost' ? '#ffb020' : '#4fc3ff', emissive: g.powerUp === 'boost' ? '#7a4a00' : '#0d4a6a' }));
+        color: tok('--' + g.powerUp), emissive: g.powerUp === 'boost' ? '#7a4a00' : '#0d4a6a' }));
       icon.position.set((g.x1 + g.x2) / 2, .45, (g.y1 + g.y2) / 2); grp.add(icon);
     }
     scene.add(grp); gateMeshes.push({ mat, icon });
@@ -243,7 +302,7 @@ function makeCar(id) {
   for (const [x, z] of [[.13,.12],[.13,-.12],[-.13,.12],[-.13,-.12]]) {
     const w = new THREE.Mesh(wheelGeo, wheelMat); w.rotation.x = Math.PI / 2; w.position.set(x, .045, z); grp.add(w);
   }
-  const aura = new THREE.Mesh(new THREE.SphereGeometry(.32, 16, 12), new THREE.MeshBasicMaterial({ color:'#4fc3ff', transparent:true, opacity:.22 }));
+  const aura = new THREE.Mesh(new THREE.SphereGeometry(.32, 16, 12), new THREE.MeshBasicMaterial({ color:tok('--shield'), transparent:true, opacity:.22 }));
   aura.position.y = .1; aura.visible = false; grp.add(aura);
   scene.add(grp);
   const c = { grp, aura }; cars.set(id, c); return c;
@@ -262,9 +321,9 @@ function vehicleAt(id, renderT) {
 }
 
 // ---------------- kamera ----------------
-// HP: default kamera di belakang mobil (gaya arcade); tombol 🎥 ganti ke kamera kap (= kamera RC fisik nanti)
+// HP: default kamera di belakang mobil (gaya arcade); tombol kamera ganti ke kamera kap (= kamera RC fisik nanti)
 let camMode = DRIVE ? 'chase' : 'top';
-$('camBtn').onclick = () => { camMode = camMode === 'pov' ? 'chase' : 'pov'; $('camBtn').textContent = camMode === 'pov' ? '🎥 Belakang' : '🎥 Kap mobil'; };
+$('camBtn').onclick = () => { camMode = camMode === 'pov' ? 'chase' : 'pov'; $('camBtn').querySelector('span').textContent = camMode === 'pov' ? 'Belakang' : 'Kap mobil'; };
 function placeCamera(me) {
   if (camMode === 'top' || !me) {
     camera.fov = 50; camera.position.set(0, arena ? arena.height * 1.15 : 9, arena ? arena.height * .95 : 7); camera.lookAt(0, 0, .3);
@@ -299,15 +358,16 @@ function renderGrid(positions) {
     renderer.render(scene, camera);
     if (c) c.grp.visible = true;
     const v = last.vehicles.find(v => v.id === id);
-    const name = id === 'top' ? 'Arena' : `${id.toUpperCase().replace('CAR', 'RC')} · ${v?.driver ? esc(v.driver) : 'kosong'} · ${v?.score ?? 0} poin`;
-    labels += `<div class="cellLabel" style="left:${x + 10}px;top:${H - y - h + (id === 'top' ? 52 : 10)}px;color:${COLORS[id] || '#fff'}">${name}</div>`;
+    const name = id === 'top' ? 'Arena' : `<i class="dot" style="background:${COLORS[id]}"></i>${rcName(id)}<span class="k">${v?.driver ? esc(v.driver) : 'Kosong'}</span><span class="num">${v?.score ?? 0} poin</span>`;
+    labels += `<div class="cellLabel chip material" style="left:${x + 12}px;top:${H - y - h + (id === 'top' ? 76 : 12)}px">${name}</div>`;
   }
   if ($('cellLabels').dataset.v !== labels) { $('cellLabels').innerHTML = labels; $('cellLabels').dataset.v = labels; }
   camera.aspect = W / H;
 }
 function setGrid(on) {
   gridView = on; document.body.classList.toggle('grid', on);
-  $('viewBtn').textContent = on ? '🗺️ Lihat arena' : '🎥 Lihat POV 3 pemain';
+  $('viewBtn').querySelector('span').textContent = on ? 'Lihat arena' : 'Lihat POV pemain';
+  $('viewBtn').querySelector('use').setAttribute('href', on ? '/icons.svg#map' : '/icons.svg#grid');
   if (!on) { $('cellLabels').innerHTML = ''; $('cellLabels').dataset.v = ''; }
 }
 
@@ -342,7 +402,7 @@ function frame() {
   const mine = last.vehicles.find(v => v.id === myCar);
   gateMeshes.forEach((g, i) => {
     const next = mine && last.phase === 'racing' && !mine.finished && mine.nextGate === i;
-    g.mat.color.set(next ? '#2ee98b' : (i === 0 ? '#f2f2f2' : '#9aa0b0'));
+    g.mat.color.set(next ? tok('--ok') : (i === 0 ? '#f2f2f2' : '#9aa0b0'));
     g.mat.emissive.set(next ? '#0b5a33' : '#000');
     if (g.icon) g.icon.rotation.y += .03;
   });
@@ -353,7 +413,7 @@ function frame() {
 requestAnimationFrame(frame);
 
 // ---------------- HUD ----------------
-const PHASE = { lobby:'Latihan bebas', countdown:'Bersiap…', racing:'BALAPAN', finished:'Selesai' };
+const PHASE = { lobby:'Latihan bebas', countdown:'Bersiap', racing:'Balapan', finished:'Selesai' };
 const fmt = ms => (ms / 1000).toFixed(1) + ' dtk';
 const clock = ms => { ms = Math.max(0, ms || 0); const m = Math.floor(ms / 60000), sec = (ms % 60000) / 1000; return `${m}:${sec.toFixed(2).padStart(5, '0')}`; };
 const setText = (id, html) => { const el = $(id); if (el.dataset.v !== html) { el.innerHTML = html; el.dataset.v = html; } };   // hindari tulis DOM tiap frame
@@ -364,49 +424,57 @@ function updateHUD(mine) {
     const active = s.vehicles.filter(v => v.driver || v.kind === 'physical' || v.id === myCar)
       .sort((a, b) => b.score - a.score || (a.place ?? 99) - (b.place ?? 99) || b.gatesPassed - a.gatesPassed);
     setText('hPos', `${active.findIndex(v => v.id === myCar) + 1}<small>/${active.length}</small>`);
-    setText('hLap', `LAP <b>${Math.min(mine.lap + 1, arena.laps)}/${arena.laps}</b>`);
+    setText('hLap', `Lap ${Math.min(mine.lap + 1, arena.laps)}/${arena.laps}`);
     const ms = mine.finished ? mine.finishMs : s.raceMs;
-    setText('hTime', s.phase === 'racing' || mine.finished ? `⏱ ${clock(ms)}` : PHASE[s.phase]);
-    setText('hInfo', `<span style="color:${COLORS[myCar]}">${myCar.toUpperCase().replace('CAR', 'RC')}</span> · Skor <b>${mine.score}</b> · ➜ ${arena.gates[mine.nextGate].label}`);
+    setText('hTime', s.phase === 'racing' || mine.finished ? clock(ms) : PHASE[s.phase]);
+    setText('hCar', `<i class="dot" style="background:${COLORS[myCar]}"></i>${rcName(myCar)}`);
+    setText('hScore', `<span class="k">Skor</span>${mine.score}`);
+    setText('hNext', `<span class="k">Berikutnya</span>${arena.gates[mine.nextGate].label.replace('START', 'Start')}`);
     const kmh = Math.abs(mine.speed) * 3.6;
     $('hSpd').textContent = kmh.toFixed(1);
     $('spdBar').firstChild.style.width = Math.min(100, Math.abs(mine.speed) / CAR.maxSpeed * 100) + '%';
-    setText('hPu', mine.powerUp ? `${rules.powerUps[mine.powerUp.type].icon} ${rules.powerUps[mine.powerUp.type].label} ${(mine.powerUp.remainMs / 1000).toFixed(1)}s` : '');
+    const pu = mine.powerUp?.type;
+    setText('hPuIcon', pu ? `<span style="color:var(--${pu})">${icon(PU_ICON[pu])}</span>` : '');
+    setText('hPuText', pu ? `${rules.powerUps[pu].label} ${(mine.powerUp.remainMs / 1000).toFixed(1)} dtk` : '');
     updateSkills(mine, s);
     drawMinimap(s, mine);
   } else if (!DRIVE) {
     updateTraffic(s.net);
-    $('stats').innerHTML = `<b>🏁 Balapan 3D</b> · ${PHASE[s.phase]}${s.phase === 'racing' ? ' · ' + fmt(s.raceMs) : ''}`;
+    setText('sPhase', PHASE[s.phase]);
+    setText('sTime', s.phase === 'racing' ? clock(s.raceMs) : '');
     const rows = [...s.vehicles].sort((a, b) => b.score - a.score || (a.place ?? 99) - (b.place ?? 99)).map(v => `<tr>
-      <td><span class="sw" style="background:${COLORS[v.id]}"></span>${v.id.toUpperCase()}${v.kind === 'physical' ? ' 🔌' : ''}</td>
-      <td>${v.driver ? esc(v.driver) : '<span style="color:var(--muted)">kosong</span>'}</td>
-      <td>${v.finished ? '🏁' : 'L' + Math.min(v.lap + 1, arena.laps)}</td><td><b>${v.score}</b></td>
-      <td>${v.powerUp ? rules.powerUps[v.powerUp.type].icon : ''}</td></tr>`).join('');
-    $('board').innerHTML = `<table><tr style="color:var(--muted)"><td>Mobil</td><td>Pemain</td><td>Lap</td><td>Skor</td><td></td></tr>${rows}</table>`;
+      <td><i class="dot" style="background:${COLORS[v.id]}"></i> ${rcName(v.id)}${v.kind === 'physical' ? ' ' + icon('plug') : ''}</td>
+      <td>${v.driver ? esc(v.driver) : '<span class="muted">Kosong</span>'}</td>
+      <td class="n">${v.finished ? icon('flag') : Math.min(v.lap + 1, arena.laps)}</td><td class="n"><b>${v.score}</b></td>
+      <td>${v.powerUp ? `<span style="color:var(--${v.powerUp.type})">${icon(PU_ICON[v.powerUp.type])}</span>` : ''}</td></tr>`).join('');
+    setText('board', `<table><tr><th>Mobil</th><th>Pemain</th><th class="n">Lap</th><th class="n">Skor</th><th></th></tr>${rows}</table>`);
     const drivers = s.vehicles.filter(v => v.driver || v.kind === 'physical').length;
-    $('adminInfo').textContent = drivers ? `${drivers} mobil siap` : 'belum ada pemain';
+    $('adminInfo').textContent = drivers ? `${drivers} mobil siap` : 'Belum ada pemain';
   }
   let center = '';
-  if (s.phase === 'countdown') center = Math.ceil(s.countdownMs / 1000);
-  else if (s.phase === 'racing' && s.raceMs < 800) center = 'GO!';
+  if (s.phase === 'countdown') center = `<div class="count">${Math.ceil(s.countdownMs / 1000)}</div>`;
+  else if (s.phase === 'racing' && s.raceMs < 800) center = '<div class="count">Mulai</div>';
   else if (s.phase === 'finished' && s.result) {
     const w = s.result.standings[0];
-    center = `<div style="font-size:40px">🏆 ${w.vehicleId.toUpperCase()} menang · skor tertinggi</div>` +
-      s.result.standings.map(r => `<div style="font-size:18px;font-weight:600">${r.position}. ${r.vehicleId.toUpperCase()} — ${r.score} poin${r.finished ? ' · ' + fmt(r.finishMs) : ''}</div>`).join('');
+    center = `<div class="result material"><h2>${icon('trophy')}${rcName(w.vehicleId)} menang</h2><p>Pemenang ditentukan oleh skor tertinggi.</p><table>` +
+      s.result.standings.map(r => `<tr><td class="n">${r.position}</td><td><i class="dot" style="background:${COLORS[r.vehicleId]}"></i> ${rcName(r.vehicleId)}</td>
+        <td class="n">${r.score} poin</td><td class="n">${r.finished ? fmt(r.finishMs) : ''}</td></tr>`).join('') + '</table></div>';
   }
   if ($('center').dataset.v !== String(center)) { $('center').innerHTML = center; $('center').dataset.v = String(center); }
 }
 
 let toastTimer;
-function toast(text, color = '#2ee98b') {
-  const t = $('toast'); t.textContent = text; t.style.color = color; t.style.opacity = 1;
-  clearTimeout(toastTimer); toastTimer = setTimeout(() => t.style.opacity = 0, 1400);
+function toast(text, iconName, color = 'var(--ok)') {
+  const t = $('toast'); t.innerHTML = (iconName ? `<span style="color:${color}">${icon(iconName)}</span>` : '') + esc(text);
+  t.classList.add('show'); clearTimeout(toastTimer); toastTimer = setTimeout(() => t.classList.remove('show'), 1400);
 }
 function onCheckpoint(m) {
   if (DRIVE && m.vehicleId !== myCar) return;
-  const pu = m.powerUp ? ` ${rules.powerUps[m.powerUp].icon} ${rules.powerUps[m.powerUp].label}!` : '';
-  const who = DRIVE ? '' : m.vehicleId.toUpperCase() + ' ';
-  toast(m.finished ? `${who}FINISH #${m.place} +${m.points}` : `${who}+${m.points}${pu}`);
+  if (DRIVE) navigator.vibrate?.(15);
+  const who = DRIVE ? '' : rcName(m.vehicleId) + ' ';
+  if (m.finished) toast(`${DRIVE ? 'Finis' : who + 'finis'} urutan ${m.place}, +${m.points} poin`, 'flag');
+  else if (m.powerUp) toast(`${who}+${m.points} poin, dapat ${rules.powerUps[m.powerUp].label}`, PU_ICON[m.powerUp], `var(--${m.powerUp})`);
+  else toast(`${who}+${m.points} poin`);
 }
 
 // ---------------- mode penonton (laptop) ----------------
@@ -443,8 +511,8 @@ if (DRIVE) {
 function renderPicker(s) {
   const el = $('cars'); if (el.dataset.v === JSON.stringify(s.vehicles.map(v => v.driver))) return;
   el.dataset.v = JSON.stringify(s.vehicles.map(v => v.driver));
-  el.innerHTML = s.vehicles.map(v => `<button data-car="${v.id}" ${v.driver ? 'disabled' : ''}
-    style="border-color:${COLORS[v.id]}">${v.id.toUpperCase().replace('CAR', 'RC')}<br><small style="margin:0;font-weight:400">${v.driver ? esc(v.driver) : 'kosong'}</small></button>`).join('');
+  el.innerHTML = s.vehicles.map(v => `<button data-car="${v.id}" ${v.driver ? 'disabled' : ''}>
+    <b><i class="dot" style="background:${COLORS[v.id]}"></i>${rcName(v.id)}</b><small>${v.driver ? 'Dipakai ' + esc(v.driver) : 'Tersedia'}</small></button>`).join('');
 }
 $('cars').addEventListener('click', e => {
   const b = e.target.closest('button[data-car]'); if (!b || b.disabled) return;
@@ -517,11 +585,11 @@ function drawMinimap(s, mine) {
   const W = mm.width, H = mm.height, pad = 6, k = Math.min((W - 2 * pad) / arena.width, (H - 2 * pad) / arena.height);
   const X = x => W / 2 + x * k, Y = y => H / 2 + y * k;
   mctx.clearRect(0, 0, W, H);
-  mctx.strokeStyle = '#9aa0b0'; mctx.lineWidth = 1; mctx.strokeRect(X(-arena.width / 2), Y(-arena.height / 2), arena.width * k, arena.height * k);
+  mctx.strokeStyle = tok('--label-2'); mctx.lineWidth = 1; mctx.strokeRect(X(-arena.width / 2), Y(-arena.height / 2), arena.width * k, arena.height * k);
   mctx.fillStyle = '#c0563a';
   for (const o of arena.obstacles) { mctx.beginPath(); mctx.arc(X(o.x), Y(o.y), o.r * k, 0, 7); mctx.fill(); }
   arena.gates.forEach((g, i) => {
-    mctx.strokeStyle = (s.phase === 'racing' && mine.nextGate === i && !mine.finished) ? '#2ee98b' : (g.powerUp === 'boost' ? '#ffb020' : g.powerUp === 'shield' ? '#4fc3ff' : '#e8eaed');
+    mctx.strokeStyle = (s.phase === 'racing' && mine.nextGate === i && !mine.finished) ? tok('--ok') : (g.powerUp ? tok('--' + g.powerUp) : tok('--label'));
     mctx.lineWidth = 2.5; mctx.beginPath(); mctx.moveTo(X(g.x1), Y(g.y1)); mctx.lineTo(X(g.x2), Y(g.y2)); mctx.stroke();
   });
   for (const v of s.vehicles) {
@@ -536,8 +604,8 @@ function drawMinimap(s, mine) {
 // ---------------- chat box ----------------
 function addChat(m) {
   const log = $('chatLog'), row = document.createElement('div'), who = document.createElement('b');
-  who.textContent = (m.car ? m.car.toUpperCase().replace('CAR', 'RC') + ' ' : '') + m.from + ': ';
-  who.style.color = COLORS[m.car] || '#cfd3dc';
+  who.textContent = (m.car ? rcName(m.car) + ' ' : '') + m.from + ': ';
+  who.style.color = COLORS[m.car] || 'var(--label-2)';
   row.append(who, document.createTextNode(m.text));   // textContent: aman dari HTML
   log.append(row); while (log.children.length > 30) log.firstChild.remove();
   log.scrollTop = log.scrollHeight;
@@ -560,21 +628,17 @@ function beep() {
 }
 
 // ---------------- traffic monitor (layar laptop) ----------------
-const ROLE_ICON = { driver:'📱', spectator:'🖥️', device:'🔌' };
+const ROLE_ICON = { driver:'phone', spectator:'display', device:'plug', monitor:'antenna' };
 function updateTraffic(n) {
   if (!n) return;
   const rows = n.clients.map(c => {
     const rtt = c.rtt == null ? '–' : c.rtt + ' ms', bad = c.rtt != null && c.rtt > 200;
-    return `<div class="row"><span>${ROLE_ICON[c.role] || '•'}</span><span class="nm"></span>
-      <span style="width:52px;text-align:right;color:${bad ? '#ff6b6b' : 'var(--muted)'}">${rtt}</span>
-      <div class="bar" style="width:${Math.min(60, c.inPerSec * 2.5)}px"></div><span style="color:var(--muted)">${c.inPerSec}/s</span></div>`;
+    return `<div class="row">${icon(ROLE_ICON[c.role] || 'person')}<span class="nm">${esc((c.car ? rcName(c.car) + ' ' : '') + (c.name || c.role))}</span>
+      <span class="rtt ${bad ? 'bad' : ''}">${rtt}</span>
+      <div class="bar" style="width:${Math.min(60, c.inPerSec * 2.5)}px"></div><span class="rate">${c.inPerSec}/s</span></div>`;
   });
-  $('traffic').innerHTML = `<b>📡 Traffic</b> <span style="color:var(--muted)">masuk ${n.inPerSec}/s · keluar ${n.outPerSec}/s · ${n.kbOutPerSec} kB/s</span>
-    <div style="color:var(--muted);margin-top:4px">klien · RTT · pesan masuk</div>${rows.join('')}`;
-  // nama klien diisi via textContent (bisa berisi teks bebas dari pemain)
-  [...$('traffic').querySelectorAll('.nm')].forEach((el, i) => {
-    const c = n.clients[i]; el.textContent = (c.car ? c.car.toUpperCase().replace('CAR', 'RC') + ' ' : '') + (c.name || c.role);
-  });
+  // tulis ulang hanya saat isi berubah: menulis <use> tiap frame membuat ikon tidak sempat tergambar
+  setText('traffic', `<b>Traffic</b><div class="head"><span>Masuk <b>${n.inPerSec}/s</b></span><span>Keluar <b>${n.outPerSec}/s</b></span><span><b>${n.kbOutPerSec}</b> kB/s</span></div>${rows.join('')}`);
 }
 </script>
 </body>
