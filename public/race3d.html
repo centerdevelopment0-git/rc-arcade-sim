@@ -93,13 +93,18 @@
   #feed div { justify-self: start; max-width: 100%; padding: 4px 10px; border-radius: var(--r-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
               transition: opacity .2s var(--ease); }
   #feed div.old { opacity: 0; }
-  #hudR { top: var(--st); right: calc(var(--sr) + 52px); height: 44px; border-radius: 999px; padding: 0 16px; pointer-events: none;
-          display: flex; align-items: center; gap: 12px; }
-  #hudR .spd { font: 800 26px/1 var(--font-num); font-variant-numeric: tabular-nums; }
-  #hudR .unit { font-size: 13px; font-weight: 600; color: var(--label-2); }
-  #spdBar { width: 64px; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
-  #spdBar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--yellow) 70%, var(--red)); }
-  #hPu { position: fixed; top: calc(var(--st) + 52px); right: var(--sr); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+  /* kecepatan: bawah tengah, angka di atas bar tipis. Rasio diukur dari game balap mobile (docs/09-UI-GUIDE.md bagian 5) */
+  #spd { position: fixed; left: 50%; bottom: var(--sb); transform: translateX(-50%); width: min(26vw, 360px); pointer-events: none;
+         display: grid; justify-items: center; gap: clamp(4px, 1.4vh, 8px); padding-top: 8px;
+         background: radial-gradient(50% 100% at 50% 100%, rgba(0,0,0,.4), transparent); }
+  #spd .row { display: flex; align-items: baseline; gap: 8px; text-shadow: 0 1px 3px rgba(0,0,0,.6); }
+  #spd .gear { font: 700 clamp(15px, 4vh, 24px)/1 var(--font-num); color: var(--label-2); min-width: 1ch; }
+  #spd .v { font: 800 clamp(20px, 5.4vh, 32px)/1 var(--font-num); font-variant-numeric: tabular-nums; }
+  #spd .unit { font-size: 13px; font-weight: 600; color: var(--label-2); }
+  #spdBar { width: 100%; height: clamp(4px, 1.6vh, 8px); border-radius: 999px; background: rgba(0,0,0,.28); overflow: hidden; }
+  #spdBar i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); }
+  #spd.boost #spdBar i { background: var(--boost); }
+  #hPu { position: fixed; top: calc(var(--st) + 8px); right: calc(var(--sr) + 56px); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
          display: flex; align-items: center; gap: 4px; pointer-events: none; }
   .ctl { position: fixed; touch-action: none; padding: 0; color: var(--label); font: 700 17px var(--font); display: grid; place-items: center;
          border: 0; transition: transform .1s var(--ease), background-color .1s var(--ease); }
@@ -185,7 +190,7 @@
 </div>
 <canvas id="minimap" class="drv hidden material" width="120" height="80" aria-hidden="true"></canvas>
 <div id="feed" class="drv hidden" aria-hidden="true"></div>
-<div id="hudR" class="hud material drv hidden"><div><span class="spd" id="hSpd">0</span><span class="unit"> km/j</span></div><div id="spdBar"><i></i></div></div>
+<div id="spd" class="drv hidden"><div class="row"><span class="gear" id="hGear">D</span><span class="v" id="hSpd">0</span><span class="unit">km/j</span></div><div id="spdBar"><i></i></div></div>
 <div id="hPu" class="chip material drv hidden"></div>
 <button id="menuBtn" class="material hidden" aria-label="Menu" aria-expanded="false" aria-controls="menu"><svg class="i"><use href="/icons.svg#menu"/></svg></button>
 <div id="scrim" class="hidden"></div>
@@ -494,7 +499,9 @@ function updateHUD(mine) {
     const kmh = Math.abs(mine.speed) * 3.6;
     $('hSpd').textContent = kmh.toFixed(1);
     $('spdBar').firstChild.style.width = Math.min(100, Math.abs(mine.speed) / CAR.maxSpeed * 100) + '%';
+    setText('hGear', mine.speed < -0.05 ? 'R' : 'D');
     const pu = mine.powerUp?.type;
+    $('spd').classList.toggle('boost', pu === 'boost');
     $('hPu').classList.toggle('hidden', !pu);
     setText('hPu', pu ? `<span style="color:var(--${pu})">${icon(PU_ICON[pu])}</span>${rules.powerUps[pu].label} <span class="num">${(mine.powerUp.remainMs / 1000).toFixed(1)} dtk</span>` : '');
     updateSkills(mine, s);
