@@ -15,6 +15,7 @@ Baca sesuai kebutuhan — tiap dokumen berdiri sendiri.
 | 06 | [BACKLOG.md](06-BACKLOG.md) | **Daftar fitur** — centang fitur yang mau kamu ambil / buang (kustomisasi di sini) | Kamu |
 | 07 | [TEST-PLAN.md](07-TEST-PLAN.md) | **Rencana uji** — cara mastiin tiap bagian beneran jalan | QA / kamu |
 | 08 | [SIM-3D.md](08-SIM-3D.md) | **Balapan 3D** — arena 3D, POV, skor/power-up, cara mobil fisik memakai logika yang sama | Dev / kamu |
+| 09 | [UI-GUIDE.md](09-UI-GUIDE.md) | **Panduan UI** — token warna, tipografi, HUD balap, dashboard, tanda AI slop yang dihindari | Dev / kamu |
 
 ## Cara pakai dokumen ini untuk kustomisasi
 1. Buka **01-PRD** → ini gambaran besar fitur & tujuannya.
