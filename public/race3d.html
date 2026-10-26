@@ -17,7 +17,6 @@
   .chip { display: inline-flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; white-space: nowrap; }
   .chip .k { color: var(--label-2); font-weight: 400; }
   .num { font-variant-numeric: tabular-nums; }
-  .btn.sm { min-height: 44px; padding: 0 16px; font-size: 15px; color: var(--label); }
   table { border-collapse: collapse; width: 100%; }
   th { text-align: left; font-weight: 400; font-size: 13px; color: var(--label-2); padding: 0 8px 4px; }
   td { padding: 6px 8px; box-shadow: inset 0 .5px 0 var(--separator); }
@@ -38,7 +37,7 @@
   #traffic .rtt.bad { color: var(--danger); }
   #traffic .bar { height: 6px; border-radius: 3px; background: var(--accent); }
   #traffic .rate { width: 36px; text-align: right; color: var(--label-2); font-variant-numeric: tabular-nums; }
-  #board { top: var(--st); right: var(--sr); min-width: 300px; padding: 12px 8px; }
+  #board { top: calc(var(--st) + 56px); right: var(--sr); min-width: 300px; padding: 12px 8px; }
   #admin { bottom: var(--sb); left: var(--sl); display: flex; gap: 8px; align-items: center; padding: 8px; border-radius: 999px; }
   #adminInfo { padding: 0 12px 0 4px; color: var(--label-2); }
   #join { bottom: var(--sb); right: var(--sr); display: flex; gap: 16px; align-items: center; }
@@ -46,6 +45,8 @@
   #join code { display: block; font-size: 13px; color: var(--accent); word-break: break-all; max-width: 220px; margin-top: 4px; }
   .cellLabel { position: fixed; pointer-events: none; }
   body.grid #board, body.grid #traffic, body.grid #chat, body.grid #join { display: none !important; }
+  /* panel laptop yang dimatikan lewat menu */
+  body.watch:not(.p-traffic) #traffic, body.watch:not(.p-chat) #chat, body.watch:not(.p-join) #join { display: none; }
 
   /* hitung mundur dan hasil */
   #center { position: fixed; left: 50%; top: 42%; transform: translate(-50%, -50%); pointer-events: none; text-align: center; }
@@ -76,37 +77,47 @@
 
   /* ---- mode setir (HP lanskap), konsep Lapangan: status kiri atas, peta mini, arah kiri bawah, GAS kanan bawah, skill di atas GAS ---- */
   body.drive { -webkit-touch-callout: none; }
+  /* Ukuran kontrol ikut tinggi layar (lanskap), dengan batas bawah di atas 44 pt Apple / 48 dp Material.
+     Angka dan asalnya: docs/09-UI-GUIDE.md bagian 5. */
+  :root { --steer: clamp(64px, 24vh, 96px); --gas-w: clamp(72px, 22vh, 96px); --gas-h: clamp(96px, 34vh, 136px);
+          --brake: clamp(56px, 18vh, 72px); --skill: clamp(48px, 13vh, 52px); --gap: 12px; }
   #hudL { top: var(--st); left: var(--sl); display: grid; gap: 8px; justify-items: start; pointer-events: none; }
-  #hudL .top { display: flex; align-items: center; gap: 16px; border-radius: var(--r-lg); padding: 8px 16px; }
-  #hudL .pos { font: 800 54px/1 var(--font-num); font-variant-numeric: tabular-nums; }
-  #hudL .pos small { font-size: 20px; color: var(--label-2); font-weight: 600; }
-  #hudL .lt { display: grid; gap: 2px; font-size: 15px; font-weight: 600; }
+  #hudL .top { display: flex; align-items: center; gap: 12px; border-radius: 999px; height: 44px; padding: 0 16px 0 14px; }
+  #hudL .pos { font: 800 30px/1 var(--font-num); font-variant-numeric: tabular-nums; }
+  #hudL .pos small { font-size: 15px; color: var(--label-2); font-weight: 600; }
+  #hudL .lt { display: flex; gap: 12px; font-size: 15px; font-weight: 600; }
   #hudL .chips { display: flex; gap: 8px; }
-  #minimap { position: fixed; top: calc(var(--st) + 128px); left: var(--sl); border-radius: var(--r-md); pointer-events: none; }
-  #hudR { top: var(--st); right: var(--sr); text-align: right; pointer-events: none; padding: 8px 16px; }
-  #hudR .spd { font: 800 44px/1 var(--font-num); font-variant-numeric: tabular-nums; }
-  #hudR .unit { font-size: 15px; font-weight: 600; color: var(--label-2); }
-  #spdBar { width: 160px; height: 6px; margin: 8px 0 0 auto; border-radius: 3px; background: var(--fill); overflow: hidden; }
+  #minimap { position: fixed; top: calc(var(--st) + 88px); left: var(--sl); width: 120px; height: 80px; border-radius: var(--r-md); pointer-events: none; opacity: .9; }
+  #feed { position: fixed; top: calc(var(--st) + 176px); left: var(--sl); width: min(36vw, 280px); max-height: calc(100dvh - var(--st) - 176px - var(--sb) - var(--steer) - var(--gap));
+          overflow: hidden; display: grid; gap: 4px; align-content: start; pointer-events: none; font-size: 13px; }
+  #feed div { justify-self: start; max-width: 100%; padding: 4px 10px; border-radius: var(--r-md); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+              transition: opacity .2s var(--ease); }
+  #feed div.old { opacity: 0; }
+  #hudR { top: var(--st); right: calc(var(--sr) + 52px); height: 44px; border-radius: 999px; padding: 0 16px; pointer-events: none;
+          display: flex; align-items: center; gap: 12px; }
+  #hudR .spd { font: 800 26px/1 var(--font-num); font-variant-numeric: tabular-nums; }
+  #hudR .unit { font-size: 13px; font-weight: 600; color: var(--label-2); }
+  #spdBar { width: 64px; height: 6px; border-radius: 3px; background: var(--fill); overflow: hidden; }
   #spdBar i { display: block; height: 100%; width: 0; border-radius: 3px; background: linear-gradient(90deg, var(--green), var(--yellow) 70%, var(--red)); }
-  #hPu { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; margin-top: 4px; min-height: 18px; display: flex; justify-content: flex-end; align-items: center; gap: 4px; }
-  #topBtns { position: fixed; top: calc(var(--st) + 100px); right: var(--sr); display: flex; gap: 8px; }
+  #hPu { position: fixed; top: calc(var(--st) + 52px); right: var(--sr); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums;
+         display: flex; align-items: center; gap: 4px; pointer-events: none; }
   .ctl { position: fixed; touch-action: none; padding: 0; color: var(--label); font: 700 17px var(--font); display: grid; place-items: center;
          border: 0; transition: transform .1s var(--ease), background-color .1s var(--ease); }
-  .ctl .i { width: 40px; height: 40px; stroke-width: 2.5; }
+  .ctl .i { width: 40%; height: 40%; stroke-width: 2.5; }
   .ctl.held { transform: scale(.96); background: rgba(255,255,255,.85); color: #000; }
-  #btnL, #btnR { bottom: var(--sb); width: min(22vh, 92px); height: min(22vh, 92px); border-radius: 50%; }
+  #btnL, #btnR { bottom: var(--sb); width: var(--steer); height: var(--steer); border-radius: 50%; }
   #btnL { left: var(--sl); }
-  #btnR { left: calc(var(--sl) + 12px + min(22vh, 92px)); }
-  #btnGas { right: var(--sr); bottom: var(--sb); width: min(24vh, 100px); height: min(34vh, 136px); border-radius: 999px;
+  #btnR { left: calc(var(--sl) + var(--gap) + var(--steer)); }
+  #btnGas { right: var(--sr); bottom: var(--sb); width: var(--gas-w); height: var(--gas-h); border-radius: 999px;
             background: color-mix(in srgb, var(--ok) 35%, transparent); }
   #btnGas.held { background: var(--ok); color: #000; }
-  #btnBrake { right: calc(var(--sr) + 12px + min(24vh, 100px)); bottom: var(--sb); width: min(18vh, 72px); height: min(18vh, 72px); border-radius: 50%;
+  #btnBrake { right: calc(var(--sr) + var(--gap) + var(--gas-w)); bottom: var(--sb); width: var(--brake); height: var(--brake); border-radius: 50%;
               font-size: 15px; background: color-mix(in srgb, var(--danger) 35%, transparent); }
   #btnBrake.held { background: var(--danger); color: #fff; }
-  #skills { position: fixed; right: var(--sr); bottom: calc(var(--sb) + 12px + min(34vh, 136px)); display: flex; gap: 12px; touch-action: none; }
-  .skill { width: min(15vh, 56px); height: min(15vh, 56px); min-width: 44px; min-height: 44px; border-radius: 50%; border: 0; padding: 0;
+  #skills { position: fixed; right: var(--sr); bottom: calc(var(--sb) + var(--gap) + var(--gas-h)); display: flex; gap: var(--gap); touch-action: none; }
+  .skill { width: var(--skill); height: var(--skill); border-radius: 50%; border: 0; padding: 0;
            color: var(--c); position: relative; touch-action: none; display: grid; place-items: center; transition: transform .1s var(--ease); }
-  .skill .i { width: 26px; height: 26px; }
+  .skill .i { width: 24px; height: 24px; }
   .skill:active:not(:disabled) { transform: scale(.96); }
   .skill:disabled { opacity: .35; }
   .skill.on { background: var(--c); color: #000; }
@@ -114,12 +125,42 @@
               color: var(--label); font: 600 12px/20px var(--font); font-variant-numeric: tabular-nums; }
   body.offline .ctl, body.offline .skill { opacity: .35; }
 
-  /* chat: bar bawah (HP) / panel kanan (laptop) */
+  /* menu: satu tombol di kanan atas, semua alat sekunder di sheet kanan */
+  #menuBtn { position: fixed; top: var(--st); right: var(--sr); width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0;
+             display: grid; place-items: center; color: var(--label); transition: transform .15s var(--ease); z-index: 6; }
+  #menuBtn:active { transform: scale(.96); }
+  #scrim { position: fixed; inset: 0; background: rgba(0,0,0,.3); z-index: 7; }
+  #menu { position: fixed; top: var(--st); right: var(--sr); max-height: calc(100dvh - var(--st) - var(--sb)); width: min(340px, calc(100vw - var(--sl) - var(--sr)));
+          border-radius: var(--r-lg); padding: 8px 16px 16px; overflow-y: auto; overscroll-behavior: contain; z-index: 8; }
+  #menu .mhead { display: flex; align-items: center; gap: 8px; min-height: 44px; }
+  #menu .mhead b { flex: 1; font-size: 17px; display: flex; align-items: center; gap: 8px; }
+  #menu .mhead .k { font-weight: 400; color: var(--label-2); }
+  #menu .close { width: 44px; height: 44px; margin-right: -12px; border: 0; padding: 0; border-radius: 50%; background: none; color: var(--label-2);
+                 display: grid; place-items: center; }
+  #menu .mlabel { font-size: 13px; color: var(--label-2); margin: 16px 4px 8px; }
+  #menu .group { background: var(--fill); border-radius: var(--r-md); overflow: hidden; }
+  #menu .group > * + * { box-shadow: inset 0 .5px 0 var(--separator); }
+  #menu .mrow { display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; background: none;
+                color: var(--label); font: 400 17px var(--font); text-align: left; cursor: pointer; }
+  #menu .mrow > span { flex: 1; }
+  #menu .mrow.danger { color: var(--danger); }
+  .seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: 2px; gap: 2px; border-radius: var(--r-sm); background: var(--fill); }
+  .seg button { min-height: 40px; border: 0; border-radius: 7px; background: none; color: var(--label); font: 600 15px var(--font);
+                transition: background-color .15s var(--ease); }
+  .seg button.on { background: color-mix(in srgb, var(--label) 24%, transparent); box-shadow: 0 1px 4px rgba(0,0,0,.25); }
+  .switch { appearance: none; -webkit-appearance: none; flex: none; width: 51px; height: 31px; margin: 0; border-radius: 999px; background: var(--fill);
+            position: relative; cursor: pointer; transition: background-color .2s var(--ease); }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #fff;
+                   box-shadow: 0 2px 6px rgba(0,0,0,.25); transition: transform .2s var(--ease); }
+  .switch:checked { background: var(--ok); }
+  .switch:checked::after { transform: translateX(20px); }
+  body.watch .drvOnly, body:not(.watch) .watchOnly { display: none; }
+
+  /* chat: di dalam menu (HP) / panel kiri bawah (laptop) */
   #chat { display: flex; flex-direction: column; padding: 8px; gap: 8px; }
-  body.drive #chat { left: calc(var(--sl) + 28px + 2 * min(22vh, 92px)); right: calc(var(--sr) + 28px + min(24vh, 100px) + min(18vh, 72px));
-                     bottom: var(--sb); max-width: 460px; margin: 0 auto; }
-  body.drive #chatLog { max-height: 2.9em; }
-  body.watch #chat { top: calc(var(--st) + 200px); right: var(--sr); height: 240px; width: min(30vw, 300px); }
+  #menu #chat { position: static; padding: 0; box-shadow: none; background: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  #menu #chatLog { flex: none; height: 96px; background: var(--fill); border-radius: var(--r-md); padding: 8px 12px; }
+  body.watch #chat { bottom: calc(var(--sb) + 76px); left: var(--sl); height: 220px; width: 300px; }
   #chatLog { flex: 1; overflow-y: auto; font-size: 13px; line-height: 1.4; padding: 0 4px; -webkit-user-select: text; user-select: text; }
   #chatLog div { word-wrap: break-word; }
   #chatForm { display: flex; gap: 8px; }
@@ -140,13 +181,36 @@
 <div id="stats" class="hud material hidden"><b>Balapan 3D</b><span class="muted" id="sPhase">Menyambung...</span><span class="num" id="sTime"></span></div>
 <div id="hudL" class="drv hidden">
   <div class="top material"><div class="pos" id="hPos">–</div><div class="lt"><span id="hLap"></span><span class="num" id="hTime"></span></div></div>
-  <div class="chips"><span class="chip material" id="hCar"></span><span class="chip material num" id="hScore"></span><span class="chip material" id="hNext"></span></div>
+  <div class="chips"><span class="chip material num" id="hScore"></span><span class="chip material" id="hNext"></span></div>
 </div>
-<canvas id="minimap" class="drv hidden material" width="150" height="100" aria-hidden="true"></canvas>
-<div id="hudR" class="hud material drv hidden"><div><span class="spd" id="hSpd">0</span><span class="unit"> km/j</span></div><div id="spdBar"><i></i></div><div id="hPu"><span id="hPuIcon"></span><span id="hPuText"></span></div></div>
-<div id="topBtns" class="drv hidden">
-  <button class="btn sm material" id="camBtn"><svg class="i"><use href="/icons.svg#camera"/></svg><span>Kap mobil</span></button>
-  <button class="btn sm material" id="swapBtn"><svg class="i"><use href="/icons.svg#swap"/></svg>Ganti RC</button>
+<canvas id="minimap" class="drv hidden material" width="120" height="80" aria-hidden="true"></canvas>
+<div id="feed" class="drv hidden" aria-hidden="true"></div>
+<div id="hudR" class="hud material drv hidden"><div><span class="spd" id="hSpd">0</span><span class="unit"> km/j</span></div><div id="spdBar"><i></i></div></div>
+<div id="hPu" class="chip material drv hidden"></div>
+<button id="menuBtn" class="material hidden" aria-label="Menu" aria-expanded="false" aria-controls="menu"><svg class="i"><use href="/icons.svg#menu"/></svg></button>
+<div id="scrim" class="hidden"></div>
+<div id="menu" class="material hidden" role="dialog" aria-label="Menu">
+  <div class="mhead"><b id="menuTitle">Menu</b><button class="close" id="menuClose" aria-label="Tutup menu"><svg class="i"><use href="/icons.svg#close"/></svg></button></div>
+  <div class="drvOnly">
+    <p class="mlabel">Kamera</p>
+    <div class="seg" id="camSeg"><button data-cam="chase" class="on">Belakang</button><button data-cam="pov">Kap mobil</button></div>
+    <p class="mlabel">Mobil</p>
+    <div class="group"><button class="mrow" id="swapBtn"><svg class="i"><use href="/icons.svg#swap"/></svg><span>Ganti RC</span></button></div>
+    <p class="mlabel">Chat</p>
+    <div id="chatSlot"></div>
+  </div>
+  <div class="watchOnly">
+    <p class="mlabel">Tampilan</p>
+    <div class="seg" id="viewSeg"><button data-view="top" class="on">Arena</button><button data-view="pov">POV pemain</button></div>
+    <p class="mlabel">Panel</p>
+    <div class="group">
+      <label class="mrow"><svg class="i"><use href="/icons.svg#qr"/></svg><span>QR gabung</span><input type="checkbox" class="switch" data-panel="join"></label>
+      <label class="mrow"><svg class="i"><use href="/icons.svg#antenna"/></svg><span>Traffic</span><input type="checkbox" class="switch" data-panel="traffic"></label>
+      <label class="mrow"><svg class="i"><use href="/icons.svg#chat"/></svg><span>Chat</span><input type="checkbox" class="switch" data-panel="chat"></label>
+    </div>
+    <p class="mlabel">Balapan</p>
+    <div class="group"><button class="mrow danger" id="resetBtn"><svg class="i"><use href="/icons.svg#reset"/></svg><span>Reset balapan</span></button></div>
+  </div>
 </div>
 <div id="traffic" class="hud material hidden"></div>
 <div id="chat" class="hud material hidden"><div id="chatLog" aria-live="polite"></div>
@@ -155,8 +219,6 @@
 <div id="board" class="hud material hidden"></div>
 <div id="admin" class="hud material hidden">
   <button class="btn filled" id="startBtn"><svg class="i"><use href="/icons.svg#play"/></svg>Mulai balapan</button>
-  <button class="btn" id="resetBtn"><svg class="i"><use href="/icons.svg#reset"/></svg>Reset</button>
-  <button class="btn" id="viewBtn"><svg class="i"><use href="/icons.svg#grid"/></svg><span>Lihat POV pemain</span></button>
   <span id="adminInfo"></span>
 </div>
 <div id="join" class="hud material hidden">
@@ -323,7 +385,8 @@ function vehicleAt(id, renderT) {
 // ---------------- kamera ----------------
 // HP: default kamera di belakang mobil (gaya arcade); tombol kamera ganti ke kamera kap (= kamera RC fisik nanti)
 let camMode = DRIVE ? 'chase' : 'top';
-$('camBtn').onclick = () => { camMode = camMode === 'pov' ? 'chase' : 'pov'; $('camBtn').querySelector('span').textContent = camMode === 'pov' ? 'Belakang' : 'Kap mobil'; };
+$('camSeg').onclick = e => { const b = e.target.closest('button'); if (b) { camMode = b.dataset.cam; segOn('camSeg', b); } };
+const segOn = (id, btn) => { for (const b of $(id).children) b.classList.toggle('on', b === btn); };
 function placeCamera(me) {
   if (camMode === 'top' || !me) {
     camera.fov = 50; camera.position.set(0, arena ? arena.height * 1.15 : 9, arena ? arena.height * .95 : 7); camera.lookAt(0, 0, .3);
@@ -366,8 +429,7 @@ function renderGrid(positions) {
 }
 function setGrid(on) {
   gridView = on; document.body.classList.toggle('grid', on);
-  $('viewBtn').querySelector('span').textContent = on ? 'Lihat arena' : 'Lihat POV pemain';
-  $('viewBtn').querySelector('use').setAttribute('href', on ? '/icons.svg#map' : '/icons.svg#grid');
+  segOn('viewSeg', $('viewSeg').children[on ? 1 : 0]);
   if (!on) { $('cellLabels').innerHTML = ''; $('cellLabels').dataset.v = ''; }
 }
 
@@ -427,15 +489,14 @@ function updateHUD(mine) {
     setText('hLap', `Lap ${Math.min(mine.lap + 1, arena.laps)}/${arena.laps}`);
     const ms = mine.finished ? mine.finishMs : s.raceMs;
     setText('hTime', s.phase === 'racing' || mine.finished ? clock(ms) : PHASE[s.phase]);
-    setText('hCar', `<i class="dot" style="background:${COLORS[myCar]}"></i>${rcName(myCar)}`);
     setText('hScore', `<span class="k">Skor</span>${mine.score}`);
     setText('hNext', `<span class="k">Berikutnya</span>${arena.gates[mine.nextGate].label.replace('START', 'Start')}`);
     const kmh = Math.abs(mine.speed) * 3.6;
     $('hSpd').textContent = kmh.toFixed(1);
     $('spdBar').firstChild.style.width = Math.min(100, Math.abs(mine.speed) / CAR.maxSpeed * 100) + '%';
     const pu = mine.powerUp?.type;
-    setText('hPuIcon', pu ? `<span style="color:var(--${pu})">${icon(PU_ICON[pu])}</span>` : '');
-    setText('hPuText', pu ? `${rules.powerUps[pu].label} ${(mine.powerUp.remainMs / 1000).toFixed(1)} dtk` : '');
+    $('hPu').classList.toggle('hidden', !pu);
+    setText('hPu', pu ? `<span style="color:var(--${pu})">${icon(PU_ICON[pu])}</span>${rules.powerUps[pu].label} <span class="num">${(mine.powerUp.remainMs / 1000).toFixed(1)} dtk</span>` : '');
     updateSkills(mine, s);
     drawMinimap(s, mine);
   } else if (!DRIVE) {
@@ -483,9 +544,18 @@ if (!DRIVE) {
   for (const id of ['stats', 'board', 'admin', 'join', 'traffic', 'chat']) $(id).classList.remove('hidden');
   const send = action => ws.readyState === 1 && ws.send(JSON.stringify({ type:'admin', action }));
   $('startBtn').onclick = () => send('start');
-  $('resetBtn').onclick = () => send('reset');
-  $('viewBtn').onclick = () => setGrid(!gridView);
+  $('resetBtn').onclick = () => { send('reset'); openMenu(false); };
+  $('viewSeg').onclick = e => { const b = e.target.closest('button'); if (b) setGrid(b.dataset.view === 'pov'); };
   setGrid(gridView);
+  // panel laptop bisa dimatikan dari menu; pilihan disimpan per browser
+  let panels = { join:true, traffic:false, chat:false };
+  try { Object.assign(panels, JSON.parse(localStorage.getItem('rc_panels')) || {}); } catch {}
+  for (const sw of document.querySelectorAll('[data-panel]')) {
+    const k = sw.dataset.panel, apply = () => document.body.classList.toggle('p-' + k, panels[k]);
+    sw.checked = panels[k]; apply();
+    sw.onchange = () => { panels[k] = sw.checked; apply(); try { localStorage.setItem('rc_panels', JSON.stringify(panels)); } catch {} };
+  }
+  $('menuBtn').classList.remove('hidden');
   (async () => {
     let base = location.origin;
     if (['localhost', '127.0.0.1'].includes(location.hostname)) {
@@ -523,13 +593,25 @@ $('cars').addEventListener('click', e => {
 // ganti RC: lepas mobil sekarang lalu kembali ke pemilih
 $('swapBtn').onclick = () => {
   if (ws && ws.readyState === 1) ws.send(JSON.stringify({ type:'leave' }));
-  myCar = null; clearHeld(); showDriveUI(false); $('cars').dataset.v = ''; $('pick').classList.remove('hidden');
+  openMenu(false); myCar = null; clearHeld(); showDriveUI(false); $('cars').dataset.v = ''; $('pick').classList.remove('hidden');
   if (last) renderPicker(last);
 };
 function showDriveUI(on) {
   document.body.classList.add('drive');
-  for (const el of document.querySelectorAll('.drv, #chat')) el.classList.toggle('hidden', !on);
+  for (const el of document.querySelectorAll('.drv, #chat, #menuBtn')) el.classList.toggle('hidden', !on);
+  $('chatSlot').append($('chat'));
+  if (on) setText('menuTitle', `<i class="dot" style="background:${COLORS[myCar]}"></i>${rcName(myCar)}<span class="k">${esc(myName)}</span>`);
 }
+
+// ---------------- menu: alat sekunder (kamera, chat, ganti RC; di laptop: tampilan, panel, reset) ----------------
+function openMenu(on) {
+  $('menu').classList.toggle('hidden', !on); $('scrim').classList.toggle('hidden', !on);
+  $('menuBtn').setAttribute('aria-expanded', on);
+  if (on) clearHeld();                               // jari yang sedang menahan GAS tidak boleh "tertinggal" saat menu terbuka
+}
+$('menuBtn').onclick = () => openMenu(true);
+$('menuClose').onclick = $('scrim').onclick = () => openMenu(false);
+addEventListener('keydown', e => { if (e.key === 'Escape') openMenu(false); });
 // input dikirim 20x/dtk. Tombol layar & keyboard digabung; belok dinaikkan bertahap supaya tidak menyentak.
 setInterval(() => {
   if (!DRIVE || !myCar || !ws || ws.readyState !== 1) return;
@@ -545,7 +627,7 @@ const SKILL_KEYS = { q:'boost', e:'shield', h:'horn' };
 addEventListener('keydown', e => {
   if (e.target.tagName === 'INPUT') return;                 // sedang mengetik chat / nama
   const key = e.key.toLowerCase();
-  if (key === 'enter' && myCar) { e.preventDefault(); $('chatInput').focus(); return; }
+  if (key === 'enter' && myCar) { e.preventDefault(); openMenu(true); $('chatInput').focus(); return; }
   if (SKILL_KEYS[key] && DRIVE && myCar && !e.repeat) { useSkill(SKILL_KEYS[key]); return; }
   const k = KEYMAP[key]; if (k && DRIVE && myCar) { e.preventDefault(); keys.add(k); }
 });
@@ -609,11 +691,17 @@ function addChat(m) {
   row.append(who, document.createTextNode(m.text));   // textContent: aman dari HTML
   log.append(row); while (log.children.length > 30) log.firstChild.remove();
   log.scrollTop = log.scrollHeight;
+  if (DRIVE) {   // HP: pesan baru muncul sebentar di kiri, tanpa membuka menu
+    const f = $('feed'), line = row.cloneNode(true); line.className = 'material';
+    f.append(line); while (f.children.length > 2) f.firstChild.remove();
+    setTimeout(() => line.classList.add('old'), 6000); setTimeout(() => line.remove(), 6300);
+  }
 }
 $('chatForm').addEventListener('submit', e => {
   e.preventDefault();
   const text = $('chatInput').value.trim(); if (!text || !ws || ws.readyState !== 1) return;
   ws.send(JSON.stringify({ type:'chat', text })); $('chatInput').value = ''; $('chatInput').blur();
+  if (DRIVE) openMenu(false);
 });
 
 // ---------------- klakson ----------------

@@ -48,7 +48,7 @@ Aturan:
 ## 3. Tipografi
 
 - Font sistem Apple: `-apple-system` (SF Pro) dengan cadangan `system-ui`, Roboto. Angka HUD memakai `ui-rounded` (SF Pro Rounded). Tanpa unduhan font.
-- Skala mengikuti gaya teks iOS: 34 (judul besar), 28, 22, 20, 17 (isi dan tombol), 15, 13, 12. Pengecualian HUD: posisi 54, kecepatan 44, hitung mundur 120.
+- Skala mengikuti gaya teks iOS: 34 (judul besar), 28, 22, 20, 17 (isi dan tombol), 15, 13, 12. Pengecualian HUD: posisi 30, kecepatan 26, hitung mundur 120.
 - Semua angka yang berubah memakai `font-variant-numeric: tabular-nums`.
 - Bobot 400, 600, 700/800 (angka besar dan judul). Maksimal tiga per layar.
 - Kalimat biasa. Huruf kapital hanya untuk GAS, REM, dan kode mobil (RC1). Judul bagian tidak memakai huruf kapital berjarak.
@@ -63,29 +63,81 @@ Aturan:
 
 ## 5. Layar balap HP (lanskap)
 
+Prinsipnya: lintasan adalah isi utama. Kontrol menempel di sudut bawah, info di sudut atas, dan sepertiga tengah layar dibiarkan kosong supaya mobil dan jalan di depannya selalu terlihat.
+
 ```
-+----------------------------------------------------------+
-| 1/2  LAP 1/2  0:02.07          [RTT]        11.5 km/j    |
-| [peta mini]                       [Kap mobil] [Ganti RC] |
-|                                                          |
-|                    (adegan 3D)            (skill)(skill)(skill)
-|                                                  +-----+ |
-| +----+ +----+   [ chat .................. ]  [REM] | GAS | |
-| |  < | |  > |                                    +-----+ |
-+----------------------------------------------------------+
++--------------------------------------------------------------+
+| (2/3  Lap 1/2  0:37.22)                  (0.7 km/j ===)  (=) |
+| (Skor 0) (Berikutnya G1)                       (Boost 2.1 dtk)|
+| [peta mini]                                                  |
+| (RC2 Cidi: siap)            (adegan 3D,        (Q)(E)(H)     |
+|                              tengah kosong)          +-----+ |
+| +----+ +----+                                  (REM) | GAS | |
+| |  < | |  > |                                        +-----+ |
++--------------------------------------------------------------+
+(=) = tombol menu. Isinya: kamera, ganti RC, chat.
 ```
 
-- Ukuran sentuh minimal 44 x 44 px; GAS, REM, tombol belok jauh lebih besar dan tidak saling tumpang tindih. Jarak antar tombol minimal 8 px.
-- Tombol di zona jempol: arah di kiri bawah, GAS dan REM di kanan bawah, skill di atas GAS.
-- Hormati `env(safe-area-inset-*)` (dengan `viewport-fit=cover`) agar tidak tertutup notch dan bar navigasi.
+### Zona
+
+- **Kiri atas:** posisi, lap, waktu dalam satu kapsul setinggi 44, lalu chip Skor dan Berikutnya, lalu peta mini 120 x 80. Pesan chat baru muncul di bawah peta mini selama 6 detik (maksimal 2 baris), tidak bisa disentuh.
+- **Kanan atas:** kecepatan dalam satu kapsul, lalu tombol menu 44 x 44 di pojok. Sisa waktu power-up muncul di bawahnya hanya saat aktif.
+- **Kiri bawah:** belok kiri dan kanan. **Kanan bawah:** GAS (paling besar), REM di kirinya, skill di atas GAS.
+- **Tengah:** tidak ada panel. Hitung mundur, toast, dan banner koneksi boleh muncul sebentar di atas tengah.
+
+### Burger menu
+
+Semua alat sekunder masuk ke satu menu di kanan atas, sesuai HIG ("secondary controls, like menus, at the top of the screen"). Isinya:
+
+- HP: kode RC dan nama pemain di judul, kamera (Belakang / Kap mobil), Ganti RC, chat (riwayat dan kirim pesan).
+- Laptop: tampilan (Arena / POV pemain), sakelar panel QR gabung, Traffic, Chat (pilihan disimpan di browser), Reset balapan. Tombol Mulai balapan tetap di luar karena itu aksi utama layar.
+
+Menu dibuka sebagai sheet kaca di kanan dengan lapisan gelap di belakangnya. Saat menu terbuka, semua tombol yang sedang ditahan dilepas, jadi mobil tidak terus melaju. Escape atau ketuk di luar menutup menu. Enter di keyboard membuka menu dan langsung fokus ke kolom chat.
+
+Yang tidak boleh masuk menu: GAS, REM, belok, skill, dan info balap. Itu dipakai tiap detik.
+
+### Ukuran kontrol
+
+Ukuran dihitung dari tinggi layar (`vh`) karena layar terkunci lanskap dan tinggi adalah sisi yang pendek. Setiap ukuran punya batas bawah dan atas (`clamp`). Token ada di `race3d.html` (`--steer`, `--gas-w`, `--gas-h`, `--brake`, `--skill`, `--gap`).
+
+| Kontrol | Rumus | 360 tinggi (Android kecil) | 390 tinggi (iPhone 14) | 430 tinggi (iPhone Pro Max) |
+|---|---|---|---|---|
+| Belok kiri / kanan | `clamp(64px, 24vh, 96px)` | 86 | 94 | 96 |
+| GAS (lebar x tinggi) | `clamp(72px, 22vh, 96px)` x `clamp(96px, 34vh, 136px)` | 79 x 122 | 86 x 133 | 95 x 136 |
+| REM | `clamp(56px, 18vh, 72px)` | 65 | 70 | 72 |
+| Skill (boost, shield, klakson) | `clamp(48px, 13vh, 52px)` | 48 | 51 | 52 |
+| Menu, tutup, kirim chat | tetap | 44 | 44 | 44 |
+| Jarak antar kontrol | tetap | 12 | 12 | 12 |
+| Jarak dari tepi | `max(12px, safe-area)` | 12+ | 12+ | 12+ |
+
+Semua dalam px CSS (= pt di iOS, kurang lebih = dp di Android).
+
+### Dari mana angkanya
+
+| Sumber | Yang kami ambil |
+|---|---|
+| Apple HIG, *Game controls* | Kontrol yang sering dipakai minimal 44 x 44 pt, kontrol jarang (menu) minimal 28 x 28 pt. Tombol penting dekat jempol, menu di atas. Jangan menutupi Home indicator dan Dynamic Island. Gerak di kiri. Sembunyikan kontrol yang sedang tidak relevan. Tanda tekan harus terlihat walau tertutup jari. |
+| Material Design | Target sentuh minimal 48 x 48 dp (sekitar 9 mm), jarak antar target minimal 8 dp. Batas bawah kontrol kami (64 / 56 / 48) memenuhi ini. |
+| Mobile Legends | Pola tata letak: joystick kiri bawah, cincin skill kanan bawah mengelilingi tombol serang yang paling besar, peta mini kiri atas, pengaturan dan chat jauh dari skill. Pemain bisa menskala tombol 100 sampai 150 persen; panduan pemain menyarankan skill 110 sampai 125 persen dan 135 sampai 150 persen di tablet. Artinya ukuran default tidak boleh lebih kecil dari yang kami pakai. |
+| Game balap mobile (Asphalt, Mario Kart Tour, Horizon Chase) | Belok di kiri, gas atau nitro di kanan, info balap di dua sudut atas, tengah layar bebas untuk mobil. Mario Kart Tour dan Asphalt mode otomatis memakai area sentuh lebar, bukan tombol kecil. |
+
+Perbandingan relatif yang kami pakai, diukur terhadap tinggi layar: tombol utama (GAS, belok) 24 sampai 35 persen, tombol sekunder (REM) sekitar 18 persen, skill sekitar 13 persen, menu sekitar 11 persen. Angka game komersial di atas adalah pola dari tangkapan layar dan panduan pemain, bukan spesifikasi resmi dari pembuatnya.
+
+### Aturan lain
+
+- Hormati `env(safe-area-inset-*)` (dengan `viewport-fit=cover`).
 - Layar balap terkunci lanskap: di portrait muncul lapisan "Putar HP ke lanskap". `maximum-scale=1` dipertahankan di layar ini saja agar cubit tidak memperbesar layar saat menyetir.
 - Pemilih mobil berupa sheet: nama, tiga tile mobil (Tersedia atau Dipakai nama), dan cara main.
-- Status koneksi (RTT, menyambung ulang, E-stop) selalu terlihat. Saat koneksi putus, tampilkan apa yang terjadi dan apa yang sedang dilakukan, misalnya "Koneksi putus. Menyambung ulang..."
-- Tombol skill kosong tampak nonaktif (opasitas, tanpa angka), bukan hilang. Slot terisi menampilkan ikon power-up dan warnanya.
-- Umpan balik tekan langsung (di bawah 100 ms): perubahan warna dan `scale(0.96)`. Toast berupa kapsul kaca di atas tengah, dengan ikon dan tanpa tanda seru. Getar (`navigator.vibrate`) hanya untuk skill aktif dan gerbang dilewati.
-- Portrait: tampilkan ajakan memutar HP (sudah ada `#rotate`).
+- Status koneksi selalu terlihat. Saat putus: "Koneksi putus. Menyambung ulang..."
+- Tombol skill kosong tampak nonaktif (opasitas, angka 0), bukan hilang.
+- Umpan balik tekan langsung (di bawah 100 ms): warna dan `scale(0.96)`. Toast berupa kapsul kaca di atas tengah, tanpa tanda seru. Getar hanya untuk skill aktif dan gerbang dilewati.
 
 ## 6. Dashboard laptop
+
+Layar arena (`race3d.html` tanpa `?drive`): status kiri atas, tombol menu kanan atas, papan skor di bawah tombol menu, Mulai balapan kiri bawah, QR gabung kanan bawah. Traffic dan chat mati secara bawaan dan dinyalakan dari menu.
+
+Dashboard koneksi (`monitor.html`):
+
 
 - Judul besar, ringkasan di kartu, kartu per mobil berisi daftar label dan nilai, tabel klien. Rata kiri. Angka rata kanan dengan `tabular-nums`.
 - Kartu ringkasan boleh, tetapi hanya untuk angka yang memang dipantau (fase, pengemudi, pesan/detik).
