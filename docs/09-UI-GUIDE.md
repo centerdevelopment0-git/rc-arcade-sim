@@ -43,12 +43,12 @@ Warna mobil: `--rc1` biru, `--rc2` hijau, `--rc3` oranye. Warna dunia 3D (lantai
 Aturan:
 
 - Warna selalu membawa arti dari tabel di atas. Warna tidak boleh jadi satu-satunya penanda: tombol REM tetap bertulisan REM, RTT tetap berangka.
-- Kontras teks minimal 4.5:1 terhadap latarnya, ikon dan tepi kontrol minimal 3:1. Teks di atas adegan 3D selalu di atas `.material`.
+- Kontras teks minimal 4.5:1 terhadap latarnya, ikon dan tepi kontrol minimal 3:1. Teks di atas adegan 3D selalu di atas `.material`, kecuali angka kecepatan di bawah tengah yang memakai pelat gelap dan bayangan teks (bagian 5).
 
 ## 3. Tipografi
 
 - Font sistem Apple: `-apple-system` (SF Pro) dengan cadangan `system-ui`, Roboto. Angka HUD memakai `ui-rounded` (SF Pro Rounded). Tanpa unduhan font.
-- Skala mengikuti gaya teks iOS: 34 (judul besar), 28, 22, 20, 17 (isi dan tombol), 15, 13, 12. Pengecualian HUD: posisi 30, kecepatan 26, hitung mundur 120.
+- Skala mengikuti gaya teks iOS: 34 (judul besar), 28, 22, 20, 17 (isi dan tombol), 15, 13, 12. Pengecualian HUD: posisi 30, kecepatan `clamp(20px, 5.4vh, 32px)` (bagian 5), hitung mundur 120.
 - Semua angka yang berubah memakai `font-variant-numeric: tabular-nums`.
 - Bobot 400, 600, 700/800 (angka besar dan judul). Maksimal tiga per layar.
 - Kalimat biasa. Huruf kapital hanya untuk GAS, REM, dan kode mobil (RC1). Judul bagian tidak memakai huruf kapital berjarak.
@@ -67,13 +67,14 @@ Prinsipnya: lintasan adalah isi utama. Kontrol menempel di sudut bawah, info di 
 
 ```
 +--------------------------------------------------------------+
-| (2/3  Lap 1/2  0:37.22)                  (0.7 km/j ===)  (=) |
-| (Skor 0) (Berikutnya G1)                       (Boost 2.1 dtk)|
+| (2/3  Lap 1/2  0:37.22)                 (Boost 2.1 dtk)  (=) |
+| (Skor 0) (Berikutnya G1)                                     |
 | [peta mini]                                                  |
 | (RC2 Cidi: siap)            (adegan 3D,        (Q)(E)(H)     |
 |                              tengah kosong)          +-----+ |
 | +----+ +----+                                  (REM) | GAS | |
-| |  < | |  > |                                        +-----+ |
+| |  < | |  > |       D 11.5 km/j                      +-----+ |
+|                     ==========-----                          |
 +--------------------------------------------------------------+
 (=) = tombol menu. Isinya: kamera, ganti RC, chat.
 ```
@@ -81,9 +82,10 @@ Prinsipnya: lintasan adalah isi utama. Kontrol menempel di sudut bawah, info di 
 ### Zona
 
 - **Kiri atas:** posisi, lap, waktu dalam satu kapsul setinggi 44, lalu chip Skor dan Berikutnya, lalu peta mini 120 x 80. Pesan chat baru muncul di bawah peta mini selama 6 detik (maksimal 2 baris), tidak bisa disentuh.
-- **Kanan atas:** kecepatan dalam satu kapsul, lalu tombol menu 44 x 44 di pojok. Sisa waktu power-up muncul di bawahnya hanya saat aktif.
+- **Kanan atas:** tombol menu 44 x 44 di pojok. Sisa waktu power-up muncul di kirinya hanya saat aktif.
+- **Bawah tengah:** kecepatan (digit gigi D/R, angka, km/j) dengan bar tipis di bawahnya, seperti game balap mobile. Tidak bisa disentuh. Ukuran dan transparansinya di tabel "Ukuran dari referensi game balap".
 - **Kiri bawah:** belok kiri dan kanan. **Kanan bawah:** GAS (paling besar), REM di kirinya, skill di atas GAS.
-- **Tengah:** tidak ada panel. Hitung mundur, toast, dan banner koneksi boleh muncul sebentar di atas tengah.
+- **Tengah:** tidak ada panel selain kecepatan di tepi bawah. Hitung mundur, toast, dan banner koneksi boleh muncul sebentar di atas tengah.
 
 ### Burger menu
 
@@ -122,6 +124,49 @@ Semua dalam px CSS (= pt di iOS, kurang lebih = dp di Android).
 | Game balap mobile (Asphalt, Mario Kart Tour, Horizon Chase) | Belok di kiri, gas atau nitro di kanan, info balap di dua sudut atas, tengah layar bebas untuk mobil. Mario Kart Tour dan Asphalt mode otomatis memakai area sentuh lebar, bukan tombol kecil. |
 
 Perbandingan relatif yang kami pakai, diukur terhadap tinggi layar: tombol utama (GAS, belok) 24 sampai 35 persen, tombol sekunder (REM) sekitar 18 persen, skill sekitar 13 persen, menu sekitar 11 persen. Angka game komersial di atas adalah pola dari tangkapan layar dan panduan pemain, bukan spesifikasi resmi dari pembuatnya.
+
+### Ukuran dari referensi game balap (diukur 2026-10-26)
+
+Cidi memberi dua tangkapan layar game balap mobile komersial (lanskap). A: 1920 x 1080 dengan bar hitam atas-bawah, area game 1920 x 889 (rasio 2,16:1). B: 1333 x 600 (rasio 2,22:1). Angka di bawah diukur dari piksel, sebagai persen lebar (W) atau tinggi (H) area game. Alfa dihitung dari kecerahan elemen dibanding latar di sebelahnya, jadi perkiraan, bukan nilai resmi. Yang kita tiru hanya rasio, penempatan, dan transparansi; gambar dan ikon game itu tidak dipakai.
+
+**Kecepatan dan bar (yang diimplementasikan):**
+
+| Ukuran | A | B | Dipakai di sim |
+|---|---|---|---|
+| Posisi | bawah tengah, tengah bar di 50% W | sama | bawah tengah |
+| Lebar bar | 26,0% W (500 px) | 25,7% W (342 px) | `min(26vw, 360px)` |
+| Tinggi bar | 1,5% H | 1,7% H | `clamp(4px, 1.6vh, 8px)` |
+| Jarak bar ke tepi bawah | 3,2% H | 3,2% H | `--sb` (12 px = 3,1% dari 390) |
+| Tinggi angka (cap height) | 3,7% H | 3,7% H | font `clamp(20px, 5.4vh, 32px)` (cap sekitar 3,8% H) |
+| Jarak angka ke bar | 1,5% H | 1,3% H | `clamp(4px, 1.4vh, 8px)` |
+| Digit gigi di kiri angka | sekitar 0,75x tinggi angka, alfa sekitar 60% | sama | D atau R, `--label-2` |
+| Isi bar | biru solid, alfa 100% | biru muda solid | `--accent`, berubah `--boost` saat boost aktif |
+| Lintasan bar | hitam alfa sekitar 20% | hitam alfa sekitar 28% | `rgba(0,0,0,.28)` |
+| Pelat di belakang angka | gelap, memudar ke samping, alfa sekitar 35 sampai 45% | sama | gradasi radial hitam 40% ke transparan |
+| Bayangan teks | tipis gelap | tipis gelap | `0 1px 3px rgba(0,0,0,.6)` |
+
+Isi bar = kecepatan / kecepatan maksimum mobil. Tanpa boost mobil dibatasi 80%, jadi bar penuh hanya saat boost. Satuan km/j tetap tampil kecil di kanan angka (bagian 8).
+
+**Elemen lain (dicatat, belum diubah):**
+
+| Elemen | A | B | Sim sekarang (tinggi 390) |
+|---|---|---|---|
+| Tombol belok (lingkaran) | diameter 30% H, jarak antar tepi 7,9% H, tepi kiri 5,3% W, tepi bawah 7,9% H | diameter 29,5% H, jarak 8,3% H, tepi kiri 4,4% W, tepi bawah 8% H | 94 px = 24% H, jarak 12 px |
+| Cincin tombol belok | putih alfa 13 sampai 16%, tebal sekitar 0,5% H, isi hampir transparan (0 sampai 5%) | sama | bahan kaca `--material` |
+| Panah di tombol belok | putih alfa sekitar 50%, tinggi sekitar 26% diameter | sama | putih 100%, 40% diameter |
+| Tombol gas atau drift (kanan bawah) | diameter 26% H, cincin pudar alfa sekitar 15% | diameter 32% H, cincin putih alfa sekitar 95%, tebal 0,8% H, tepi kanan 3,6% W, tepi bawah 3,8% H | GAS 86 x 133 = 22 x 34% H |
+| Skill utama (nitro) | diameter 18,6% H, cincin ganda putih alfa sekitar 85%, kiri atas tombol gas | diameter 15% H, isi biru gelap alfa sekitar 50% dengan cincin terang, diagonal kiri atas gas | 51 px = 13% H, berderet di atas GAS |
+| Tombol kecil di bawah skill | diameter 11,8% H | tidak ada | REM 70 px = 18% H |
+| Rasio skill : gas | 0,72 | 0,47 | 0,59 (terhadap lebar GAS) |
+| Rasio belok : gas | 1,15 | 0,92 | 1,09 (terhadap lebar GAS) |
+| Waktu (kiri atas) | tinggi angka 4,8% H, peringkat di bawahnya | tidak ada | kapsul 44 px, angka posisi 30 px |
+| Peta mini | lingkaran kanan atas, diameter 37% H, cincin tipis alfa sekitar 15%, tanpa isi | tidak ada | kotak 120 x 80 kiri atas |
+| Pengaturan dan kamera | ikon sekitar 6% H di pojok kanan atas, bertumpuk | tidak ada | satu tombol menu 44 px (PR #9) |
+| Ping | teks sekitar 2,8% H, kiri bawah di bawah tombol belok | tidak ada | belum ada |
+
+Pola transparansi di kedua referensi: kontrol yang ditahan terus (belok) paling pudar, cincin sekitar 15% dan panah sekitar 50%, supaya jalan di bawahnya tetap terlihat. Tombol aksi sesaat (nitro, gas di B) memakai cincin hampir putih penuh supaya mudah ditemukan. Angka kecepatan putih penuh di atas pelat gelap, bar memakai isi solid tanpa gradasi.
+
+Yang sengaja tidak ditiru: tombol di bawah 44 pt (Apple) atau 48 dp (Material); tombol terkecil A (11,8% H) masih 46 px pada tinggi 390, jadi batas bawah `clamp` kita tetap berlaku. Pengaturan dan kamera tetap di satu burger menu.
 
 ### Aturan lain
 
@@ -171,7 +216,7 @@ Redesign Apple (2026-10-26) sudah membersihkan semua yang dulu ditandai *ada*. J
 6. **Glow neon** sebagai hiasan (`box-shadow` bercahaya di skill aktif). Keadaan aktif cukup dengan warna isi dan ikon terisi.
 7. **Hex di luar token** dan lebih dari satu warna aksen untuk arti yang sama.
 8. **Tanda seru di toast** ("aktif!", "klakson!").
-9. Gradasi warna sebagai hiasan. Gradasi di bar kecepatan boleh karena membawa arti (aman ke bahaya).
+9. Gradasi warna sebagai hiasan. Bar kecepatan berisi warna solid; pelat gelap di belakang angka kecepatan boleh bergradasi karena fungsinya menjaga kontras di atas adegan 3D.
 10. Kartu identik dengan radius dan bayangan sama untuk semua isi, termasuk yang bukan ringkasan.
 11. Animasi fade-dan-naik di setiap panel atau hover di setiap kartu.
 12. Teks pengisi ("Selamat datang di pengalaman balap terbaik!"), data palsu, atau lorem ipsum yang tertinggal.
